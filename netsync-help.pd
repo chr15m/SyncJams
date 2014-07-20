@@ -1,0 +1,31 @@
+#N canvas 307 319 349 223 10;
+#X obj 156 17 tgl 32 0 empty netbus/connected connected 0 -8 0 10 -262144
+-1 -1 1 1;
+#X obj 11 17 nbx 12 32 -1e+37 1e+37 0 0 empty netbus/id network-unique-id
+0 -8 0 10 -262144 -1 -1 520184 256;
+#X msg 215 186 \; pd-netbus.pd vis 1;
+#N canvas 2 48 450 300 net-syncing 0;
+#X obj 69 56 netsync \$0/pos2_r \$0/pos2 pos2;
+#X obj 69 75 netsync \$0/pos3_r \$0/pos3 pos3;
+#X obj 69 36 netsync \$0/pos_r \$0/pos pos;
+#X msg 70 108 \; list-test hello this is a test;
+#X obj 70 146 netsync list-test_r list-test list-test;
+#X text 16 36 faders;
+#X text 18 106 list;
+#X obj 278 -20 r netbus/receive/raw;
+#X obj 278 2 print netbus/receive/raw;
+#X connect 7 0 8 0;
+#X restore 13 198 pd net-syncing;
+#X obj 11 59 vsl 32 128 0 127 0 0 \$0/pos \$0/pos_r empty 0 -9 0 10
+-262144 -1 -1 0 1;
+#X obj 51 59 vsl 32 128 0 127 0 0 \$0/pos2 \$0/pos2_r empty 0 -9 0
+10 -262144 -1 -1 0 1;
+#X obj 91 59 vsl 32 128 0 127 0 0 \$0/pos3 \$0/pos3_r empty 0 -9 0
+10 -262144 -1 -1 0 1;
+#X text 111 196 <- guts;
+#X obj 131 57 tgl 32 0 \$0/test-toggle \$0/test-toggle_r empty 17 7
+0 10 -262144 -1 -1 0 1;
+#X obj 131 97 tgl 32 0 \$0/test-toggle2 \$0/test-toggle2_r empty 17
+7 0 10 -262144 -1 -1 0 1;
+#X obj 131 137 tgl 32 0 \$0/test-toggle3 \$0/test-toggle3_r empty 17
+7 0 10 -262144 -1 -1 0 1;

@@ -1,0 +1,14 @@
+#N canvas 372 257 406 135 10;
+#X obj 12 51 list prepend \$3;
+#X obj 12 7 r \$2;
+#X obj 149 73 s \$1;
+#X obj 149 30 route \$3;
+#X obj 12 73 s netbus/send;
+#X obj 149 8 r netbus/receive;
+#X obj 283 8 netbus-singleton;
+#X obj 12 28 throttle-net-bound;
+#X connect 0 0 4 0;
+#X connect 1 0 7 0;
+#X connect 3 0 2 0;
+#X connect 5 0 3 0;
+#X connect 7 0 0 0;
