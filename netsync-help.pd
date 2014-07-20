@@ -1,6 +1,6 @@
-#N canvas 300 221 419 474 10;
+#N canvas 299 216 419 474 10;
 #X obj 23 242 tgl 32 0 \$0/test-toggle \$0/test-toggle_r empty 17 7
-0 10 -262144 -1 -1 1 1;
+0 10 -262144 -1 -1 0 1;
 #X obj 26 146 hsl 128 32 0 127 0 0 \$0/pos \$0/pos_r empty -2 -8 0
 10 -262144 -1 -1 0 1;
 #X text 22 5 syncing data sources and GUIs across the LAN with broadcast
@@ -9,7 +9,7 @@ UDP packets. load this patch on multiple machines to test.;
 #X obj 174 60 tgl 32 0 empty netbus/connected connected 0 -8 0 10 -262144
 -1 -1 1 1;
 #X obj 29 60 nbx 12 32 -1e+37 1e+37 0 0 empty netbus/id network-unique-id
-0 -8 0 10 -262144 -1 -1 616700 256;
+0 -8 0 10 -262144 -1 -1 717849 256;
 #X msg 22 143 \; list-test hello this is a test;
 #X obj 259 61 r netbus/receive/raw;
 #X obj 259 83 print netbus/receive/raw;
@@ -32,12 +32,14 @@ id \, connection status \, raw data.;
 #X text 22 56 each data source needs a netsync:;
 #X floatatom 24 343 5 0 0 0 - - -;
 #X obj 24 362 netsync crazy-numbers;
-#X floatatom 24 384 5 0 0 0 - - -;
+#X floatatom 24 384 5 0 0 0 me - -;
 #X text 22 321 data direct;
 #X text 22 75 netsync data-network-namae receiver-name sender-name
 ;
 #X obj 70 249 netsync test-toggle \$0/test-toggle \$0/test-toggle_r
 ;
 #X obj 168 154 netsync pos \$0/pos \$0/pos_r;
+#X floatatom 147 384 5 0 0 0 others - -;
 #X connect 7 0 8 0;
 #X connect 8 0 9 0;
+#X connect 8 1 14 0;
