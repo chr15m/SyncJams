@@ -1,4 +1,4 @@
-#N canvas 411 74 753 588 10;
+#N canvas 410 69 753 588 10;
 #X obj 170 555 s netbus/send;
 #X obj 640 7 netbus-singleton;
 #X obj 12 188 metro;
@@ -53,7 +53,7 @@
 #X obj 12 65 s \$0/set-tick;
 #X obj 188 26 r netbus/receive/raw;
 #X obj 587 177 s \$0/bpm;
-#X obj 546 203 r \$0/bpm;
+#X obj 525 197 r \$0/bpm;
 #X obj 602 465 r \$0/bpm;
 #X obj 602 487 t f f;
 #X obj 618 56 r \$1/bpm;
@@ -111,7 +111,7 @@
 #X connect 49 0 50 0;
 #X connect 50 0 51 0;
 #X connect 52 0 63 0;
-#X connect 54 0 39 1;
+#X connect 54 0 39 0;
 #X connect 55 0 56 0;
 #X connect 56 0 58 0;
 #X connect 56 1 59 0;
