@@ -1,0 +1,22 @@
+#N canvas 150 236 419 187 10;
+#X text 12 17 network friendly synchronising metro;
+#X obj 16 70 nbx 5 14 0 250 0 1 empty empty bpm 0 -8 0 10 -262144 -1
+-1 180 256;
+#X floatatom 16 126 5 0 0 3 tick - -;
+#X floatatom 65 126 7 0 0 3 sub-tick - -;
+#X obj 226 70 nbx 5 14 0 250 0 1 empty empty bpm 0 -8 0 10 -262144
+-1 -1 120 256;
+#X floatatom 226 126 5 0 0 3 tick - -;
+#X floatatom 275 126 7 0 0 3 sub-tick - -;
+#X floatatom 115 126 5 0 0 3 bpm - -;
+#X floatatom 325 126 5 0 0 3 bpm - -;
+#X obj 226 100 netro timer-2 120;
+#X obj 16 100 netro timer-1 180;
+#X connect 1 0 10 0;
+#X connect 4 0 9 0;
+#X connect 9 0 5 0;
+#X connect 9 1 6 0;
+#X connect 9 2 8 0;
+#X connect 10 0 2 0;
+#X connect 10 1 3 0;
+#X connect 10 2 7 0;
