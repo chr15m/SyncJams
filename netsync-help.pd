@@ -1,45 +1,40 @@
-#N canvas 299 216 419 474 10;
+#N canvas 297 206 851 474 10;
 #X obj 23 242 tgl 32 0 \$0/test-toggle \$0/test-toggle_r empty 17 7
 0 10 -262144 -1 -1 0 1;
 #X obj 26 146 hsl 128 32 0 127 0 0 \$0/pos \$0/pos_r empty -2 -8 0
 10 -262144 -1 -1 0 1;
 #X text 22 5 syncing data sources and GUIs across the LAN with broadcast
 UDP packets. load this patch on multiple machines to test.;
-#N canvas 2 48 450 300 more 0;
-#X obj 174 60 tgl 32 0 empty netbus/connected connected 0 -8 0 10 -262144
--1 -1 1 1;
-#X obj 29 60 nbx 12 32 -1e+37 1e+37 0 0 empty netbus/id network-unique-id
-0 -8 0 10 -262144 -1 -1 717849 256;
-#X msg 22 143 \; list-test hello this is a test;
-#X obj 259 61 r netbus/receive/raw;
-#X obj 259 83 print netbus/receive/raw;
-#X text 25 8 get information from the netbus singleton like our network
-id \, connection status \, raw data.;
-#X text 21 121 you can also sync more complex data like lists or tables
-;
-#X obj 22 205 r list-test_r;
-#X obj 22 227 list prepend set;
-#X msg 22 249;
-#X obj 22 181 netsync list-test list-test list-test_r;
-#X msg 309 252 \; pd-netbus.pd vis 1;
-#X text 135 265 guts of netbus singleton ->;
-#X connect 3 0 4 0;
-#X connect 7 0 8 0;
-#X connect 8 0 9 0;
-#X restore 238 410 pd more stuff in here;
 #X text 20 126 sync a fader;
 #X text 21 223 sync a toggle;
 #X text 22 56 each data source needs a netsync:;
-#X floatatom 24 343 5 0 0 0 - - -;
-#X obj 24 362 netsync crazy-numbers;
-#X floatatom 24 384 5 0 0 0 me - -;
-#X text 22 321 data direct;
-#X text 22 75 netsync data-network-namae receiver-name sender-name
-;
+#X floatatom 86 363 5 0 0 0 - - -;
+#X obj 86 382 netsync crazy-numbers;
+#X floatatom 86 404 5 0 0 3 me - -;
+#X text 84 341 data direct;
 #X obj 70 249 netsync test-toggle \$0/test-toggle \$0/test-toggle_r
 ;
 #X obj 168 154 netsync pos \$0/pos \$0/pos_r;
-#X floatatom 147 384 5 0 0 0 others - -;
+#X floatatom 209 404 5 0 0 3 others - -;
+#X obj 588 342 tgl 32 0 empty netbus/connected netbus/connected 0 -8
+0 10 -262144 -1 -1 1 1;
+#X obj 443 342 nbx 12 32 -1e+37 1e+37 0 0 empty netbus/id netbus/id
+0 -8 0 10 -262144 -1 -1 598 256;
+#X msg 468 146 \; list-test hello this is a test;
+#X obj 683 343 r netbus/receive/raw;
+#X obj 683 365 print netbus/receive/raw;
+#X text 439 290 get information from the netbus singleton like our
+network id \, connection status \, raw data.;
+#X text 467 124 you can also sync more complex data like lists or tables
+;
+#X obj 468 208 r list-test_r;
+#X msg 468 232;
+#X obj 468 184 netsync list-test list-test list-test_r;
+#X msg 717 415 \; pd-netbus.pd vis 1;
+#X text 543 428 guts of netbus singleton ->;
+#X text 22 75 netsync data-network-name receiver-name sender-name;
+#X connect 6 0 7 0;
 #X connect 7 0 8 0;
-#X connect 8 0 9 0;
-#X connect 8 1 14 0;
+#X connect 7 1 12 0;
+#X connect 16 0 17 0;
+#X connect 20 0 21 0;
