@@ -1,10 +1,10 @@
-#N canvas 637 241 355 233 10;
+#N canvas 633 221 355 244 10;
 #X obj 156 17 tgl 32 0 empty netbus/connected connected 0 -8 0 10 -262144
 -1 -1 1 1;
 #X obj 11 17 nbx 12 32 -1e+37 1e+37 0 0 empty netbus/id network-unique-id
-0 -8 0 10 -262144 -1 -1 549307 256;
+0 -8 0 10 -262144 -1 -1 899449 256;
 #X msg 215 196 \; pd-netbus.pd vis 1;
-#N canvas 2 48 450 300 net-syncing 0;
+#N canvas 23 63 450 300 net-syncing 0;
 #X text 16 36 faders;
 #X obj 69 114 netsync test-toggle \$0/test-toggle \$0/test-toggle_r
 ;
@@ -19,11 +19,11 @@
 #X obj 69 193 netro timer-1 180;
 #X restore 13 198 pd net-syncing;
 #X obj 11 59 vsl 32 128 0 127 0 0 \$0/pos \$0/pos_r empty 0 -9 0 10
--262144 -1 -1 0 0;
+-262144 -1 -1 575 0;
 #X obj 51 59 vsl 32 128 0 127 0 0 \$0/pos2 \$0/pos2_r empty 0 -9 0
-10 -262144 -1 -1 0 0;
+10 -262144 -1 -1 1025 0;
 #X obj 91 59 vsl 32 128 0 127 0 0 \$0/pos3 \$0/pos3_r empty 0 -9 0
-10 -262144 -1 -1 0 0;
+10 -262144 -1 -1 2778 0;
 #X text 111 196 <- guts;
 #X obj 131 57 tgl 32 0 \$0/test-toggle \$0/test-toggle_r empty 17 7
 0 10 -262144 -1 -1 0 1;
@@ -31,12 +31,10 @@
 7 0 10 -262144 -1 -1 0 1;
 #X obj 131 137 tgl 32 0 \$0/test-toggle3 \$0/test-toggle3_r empty 17
 7 0 10 -262144 -1 -1 0 1;
-#X obj 266 18 tgl 32 0 netbus/debug empty print-netbus 0 -8 0 10 -262144
+#X obj 184 76 tgl 32 0 netbus/debug empty print-netbus 0 -8 0 10 -262144
 -1 -1 0 1;
-#X obj 266 77 nbx 5 32 0 250 0 1 timer-1/bpm timer-1/bpm bpm 0 -8 0
-10 -262144 -1 -1 180 256;
-#X obj 266 127 nbx 5 32 0 250 0 1 empty timer-1/tick tick 0 -8 0 10
--262144 -1 -1 92 256;
+#X obj 266 77 nbx 5 32 0 250 0 0 timer-1/bpm timer-1/bpm_r bpm 0 -8
+0 10 -262144 -1 -1 180 256;
 #N canvas 119 306 450 300 bonk 0;
 #X obj -513 176 line~;
 #X obj -584 178 osc~ 440;
@@ -64,3 +62,7 @@
 #X connect 9 0 1 0;
 #X connect 10 0 0 0;
 #X restore 13 219 pd bonk;
+#X obj 184 130 tgl 32 0 netro/debug empty print-netro 0 -8 0 10 -262144
+-1 -1 1 1;
+#X obj 266 131 nbx 5 32 -1e+37 1e+37 0 0 empty timer-1/tick tick 0
+-8 0 10 -262144 -1 -1 2249 256;
