@@ -1,4 +1,4 @@
-#N canvas 297 206 851 474 10;
+#N canvas 294 191 851 474 10;
 #X obj 23 242 tgl 32 0 \$0/test-toggle \$0/test-toggle_r empty 17 7
 0 10 -262144 -1 -1 0 1;
 #X obj 26 146 hsl 128 32 0 127 0 0 \$0/pos \$0/pos_r empty -2 -8 0
@@ -8,18 +8,14 @@ UDP packets. load this patch on multiple machines to test.;
 #X text 20 126 sync a fader;
 #X text 21 223 sync a toggle;
 #X text 22 56 each data source needs a netsync:;
-#X floatatom 86 363 5 0 0 0 - - -;
-#X obj 86 382 netsync crazy-numbers;
-#X floatatom 86 404 5 0 0 3 me - -;
+#X floatatom 86 363 5 0 0 0 - - -, f 5;
+#X floatatom 86 404 5 0 0 3 me - -, f 5;
 #X text 84 341 data direct;
-#X obj 70 249 netsync test-toggle \$0/test-toggle \$0/test-toggle_r
-;
-#X obj 168 154 netsync pos \$0/pos \$0/pos_r;
-#X floatatom 209 404 5 0 0 3 others - -;
+#X floatatom 215 404 5 0 0 3 others - -, f 5;
 #X obj 588 342 tgl 32 0 empty netbus/connected netbus/connected 0 -8
-0 10 -262144 -1 -1 1 1;
+0 10 -262144 -1 -1 0 1;
 #X obj 443 342 nbx 12 32 -1e+37 1e+37 0 0 empty netbus/id netbus/id
-0 -8 0 10 -262144 -1 -1 598 256;
+0 -8 0 10 -262144 -1 -1 7.01523e+08 256;
 #X msg 468 146 \; list-test hello this is a test;
 #X obj 683 343 r netbus/receive/raw;
 #X obj 683 365 print netbus/receive/raw;
@@ -29,12 +25,16 @@ network id \, connection status \, raw data.;
 ;
 #X obj 468 208 r list-test_r;
 #X msg 468 232;
-#X obj 468 184 netsync list-test list-test list-test_r;
 #X msg 717 415 \; pd-netbus.pd vis 1;
 #X text 543 428 guts of netbus singleton ->;
-#X text 22 75 netsync data-network-name receiver-name sender-name;
-#X connect 6 0 7 0;
-#X connect 7 0 8 0;
-#X connect 7 1 12 0;
-#X connect 16 0 17 0;
-#X connect 20 0 21 0;
+#X obj 168 154 netsync /pos \$0/pos \$0/pos_r;
+#X text 22 75 netsync osc-address-name receiver-name sender-name;
+#X obj 70 249 netsync /test-toggle \$0/test-toggle \$0/test-toggle_r
+;
+#X obj 468 184 netsync /list-test list-test list-test_r;
+#X obj 86 382 netsync /crazy-numbers;
+#X connect 6 0 25 0;
+#X connect 13 0 14 0;
+#X connect 17 0 18 0;
+#X connect 25 0 7 0;
+#X connect 25 1 9 0;
