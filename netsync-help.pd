@@ -1,8 +1,8 @@
-#N canvas 294 191 851 474 10;
+#N canvas 293 186 851 474 10;
 #X obj 23 242 tgl 32 0 \$0/test-toggle \$0/test-toggle_r empty 17 7
 0 10 -262144 -1 -1 0 1;
 #X obj 26 146 hsl 128 32 0 127 0 0 \$0/pos \$0/pos_r empty -2 -8 0
-10 -262144 -1 -1 0 1;
+10 -262144 -1 -1 3500 1;
 #X text 22 5 syncing data sources and GUIs across the LAN with broadcast
 UDP packets. load this patch on multiple machines to test.;
 #X text 20 126 sync a fader;
@@ -15,7 +15,7 @@ UDP packets. load this patch on multiple machines to test.;
 #X obj 588 342 tgl 32 0 empty netbus/connected netbus/connected 0 -8
 0 10 -262144 -1 -1 0 1;
 #X obj 443 342 nbx 12 32 -1e+37 1e+37 0 0 empty netbus/id netbus/id
-0 -8 0 10 -262144 -1 -1 7.01523e+08 256;
+0 -8 0 10 -262144 -1 -1 6.39951e+08 256;
 #X msg 468 146 \; list-test hello this is a test;
 #X obj 683 343 r netbus/receive/raw;
 #X obj 683 365 print netbus/receive/raw;

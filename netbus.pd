@@ -1,4 +1,4 @@
-#N canvas 317 48 970 674 10;
+#N canvas 316 48 970 674 10;
 #X obj 18 95 loadbang;
 #X obj 18 117 t b b;
 #X text 209 139 normal LAN wide broadcast;
