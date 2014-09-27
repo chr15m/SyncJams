@@ -9,7 +9,8 @@ PORT = 23232
 ANY = '0.0.0.0'
 ADDRESSES = {
 	"broadcast": '255.255.255.255',
-	"multicast": '239.255.232.32'
+	# "multicast": '239.255.232.32',
+	"android": '192.168.42.255',
 }
 
 NAMESPACE = "/syncjams"
@@ -43,8 +44,7 @@ class SyncjamsSender():
 		self.sender = OSC.OSCClient(*args, **kwargs)
 		self.sender.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 		self.sender.socket.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
-		# self.sender.connect((ANY, port))
-		self.sender.socket.bind((ANY, port))
+		self.sender.socket.bind((ANY, 0))
 		self.sender.socket.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, 255)
 	
 	def sendto(self, oscmsg, address):
@@ -59,7 +59,8 @@ class SyncjamsNode:
 		self.port = kwargs.has_key("port") and kwargs.pop("port") or PORT
 		# server and client 
 		# self.listeners = [SyncjamsListener(ADDRESSES["broadcast"], self.port, callback=self.osc_message_handler), SyncjamsListener(ADDRESSES["multicast"], self.port, callback=self.osc_message_handler)]
-		self.listeners = [SyncjamsListener(ADDRESSES["multicast"], self.port, callback=self.osc_message_handler)]
+		# self.listeners = [SyncjamsListener(ADDRESSES["multicast"], self.port, callback=self.osc_message_handler)]
+		self.listeners = [SyncjamsListener(ADDRESSES["broadcast"], self.port, callback=self.osc_message_handler)]
 		self.sender = SyncjamsSender(self.port)
 		# randomly chosen client ID
 		self.client_id = randint(0, pow(2, 32))
