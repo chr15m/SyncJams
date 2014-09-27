@@ -187,7 +187,7 @@ if __name__ == "__main__":
 	
 	banner = """SyncjamsNode is 's'. Send with `s.send('/myaddress/test', [1, 2, 3, "hello"])`"""
 	try:
-		from IPython.frontend.terminal.embed import InteractiveShellEmbed
+		from IPython.terminal.embed import InteractiveShellEmbed
 		InteractiveShellEmbed(banner1=banner)()
 	except ImportError:
 		import code
