@@ -19,35 +19,6 @@ NAMESPACE = "/syncjams"
 class SyncjamsException(Exception):
 	pass
 
-# class that can listen out on a particular ip - reused to listen on different broadcast subnets
-class SyncjamsListener(OSC.OSCServer):
-	client = None
-	socket_timeout = 0
-	def __init__(self, address, port, callback, *args, **kwargs):
-		# check whether we have been asked to listen on a multicast address
-		self.multicast = address.startswith("239.255") or address.startswith("224.")
-		self.address = address
-		# set up the OSC server to listen
-		OSC.OSCServer.__init__(self, (self.multicast and ANY or address, port), *args, **kwargs)
-		# whatever messages come in, run the main callback
-		self.addMsgHandler("default", callback)
-	
-	def server_bind(self):
-		# allow multiple receivers on the same IP
-		self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-		# allow sending to broadcast networks
-		self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
-		# allow port re-use on platforms that require the flag
-		if 'SO_REUSEPORT' in vars(socket):
-			self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
-		# ask the OSC library to bind to ports etc
-		result = OSC.OSCServer.server_bind(self)
-		# finally set the multicast options if this is a multicast socket
-		self.socket.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, 255)
-		if self.multicast:
-			self.socket.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, socket.inet_aton(self.address) + socket.inet_aton(ANY))
-		return result
-
 class SyncjamsNode:
 	# map of known ClientIDs with information on messages send and received to/from them
 	# format:
@@ -192,6 +163,35 @@ class SyncjamsNode:
 		self.running = False
 		[s.close() for s in self.listeners]
 		self.sender.close()
+
+# class that can listen out on a particular ip - reused to listen on different broadcast subnets
+class SyncjamsListener(OSC.OSCServer):
+	client = None
+	socket_timeout = 0
+	def __init__(self, address, port, callback, *args, **kwargs):
+		# check whether we have been asked to listen on a multicast address
+		self.multicast = address.startswith("239.255") or address.startswith("224.")
+		self.address = address
+		# set up the OSC server to listen
+		OSC.OSCServer.__init__(self, (self.multicast and ANY or address, port), *args, **kwargs)
+		# whatever messages come in, run the main callback
+		self.addMsgHandler("default", callback)
+	
+	def server_bind(self):
+		# allow multiple receivers on the same IP
+		self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+		# allow sending to broadcast networks
+		self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+		# allow port re-use on platforms that require the flag
+		if 'SO_REUSEPORT' in vars(socket):
+			self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
+		# ask the OSC library to bind to ports etc
+		result = OSC.OSCServer.server_bind(self)
+		# finally set the multicast options if this is a multicast socket
+		self.socket.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, 255)
+		if self.multicast:
+			self.socket.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, socket.inet_aton(self.address) + socket.inet_aton(ANY))
+		return result
 
 # Test code for running an interactive version that prints results
 if __name__ == "__main__":
