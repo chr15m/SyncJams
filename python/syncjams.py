@@ -16,6 +16,10 @@ ADDRESSES = {
 
 NAMESPACE = "/syncjams"
 
+# seconds
+DROP_INACTIVE_CLIENT_TIME = 10
+RE_SEND_INTERVAL = 0.1
+
 class SyncjamsException(Exception):
 	pass
 
@@ -37,6 +41,10 @@ class SyncjamsNode:
 		self.client_id = randint(0, pow(2, 30))
 		# increment a message id every time we send
 		self.message_id = 0
+		# queue of messages which haven't been ack'ed by everyone
+		self.non_acked_queue = []
+		# last time our re-send happened
+		self.last_re_send_time = 0
 		# whether or not the server is running
 		self.running = False
 	
@@ -103,6 +111,14 @@ class SyncjamsNode:
 				# add the last_our_message_acknowledged_id to this client's map
 				client[2] = message_id
 				# print "ACK", client_id, message_id
+			# find the lowest acknowledged message from a still active client
+			lowest_message_id = self.message_id
+			for c in self.client_map:
+				# if this client is still active and the message_id is lower
+				if c[0] > time.time() - DROP_INACTIVE_CLIENT_TIME and not c[2] is None and c[2] < lowest_message_id:
+					lowest_message_id = c[2]
+			# prune any messages with a lower message_id
+			self.non_acked_queue = filter(lambda m: m[0] > lowest_message_id, self.non_acked_queue)
 		elif len(route) and route[0] == "metronome":
 			# special consensus metronome sync message
 			pass
@@ -141,18 +157,41 @@ class SyncjamsNode:
 				oscmsg.append(m)
 		else:
 			oscmsg.append(message)
-		# send the message out to all broadcast/multicast networks possible
+		# push the message onto our non-ack'ed queue to be re-sent until ack'ed
+		self.non_acked_queue.append((message_id, oscmsg))
+		# send the message to all broadcast networks
+		self.send_one_to_all(oscmsg)
+	
+	def re_send_non_acked(self):
+		# bail if not enough time has elapsed yet
+		if time.time() < self.last_re_send_time + RE_SEND_INTERVAL:
+			return
+
+		# bail if no un-acked messages waiting
+		if not self.non_acked_queue:
+			return
+		
+		self.last_re_send_time = time.time()
+		for message_id, oscmsg in self.non_acked_queue:
+			print "Re-sending:", message_id, oscmsg
+			self.send_one_to_all(oscmsg)
+	
+	def send_one_to_all(self, oscmsg):
+		# send one message out to all broadcast/multicast networks possible, ignoring errors
 		for a in ADDRESSES:
 			try:
 				return self.sender.sendto(oscmsg, (ADDRESSES[a], self.port))
-			except OSCClientError:
-				pass
+			except OSCClientError, e:
 				# silently drop socket errors because we'll just keep trying
+				# TODO: log
+				print "Dropped message send:", oscmsg
+				print e
 	
 	def poll(self):
 		""" Run the SyncJams inner loop once, processing network messages etc. """
 		for s in self.listeners:
 			s.handle_request()
+		self.re_send_non_acked()
 	
 	def serve_forever(self):
 		while self.running:
