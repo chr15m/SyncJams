@@ -1,5 +1,8 @@
 #!/usr/bin/env python
 
+# PEP8 all up in here:
+# vim: tabstop=8 expandtab shiftwidth=4 softtabstop=4 smartindent
+
 import OSC
 import socket
 import time
@@ -9,254 +12,316 @@ PORT = 23232
 
 ANY = '0.0.0.0'
 ADDRESSES = {
-	"broadcast": '255.255.255.255',
-	# "multicast": '239.255.232.32',
-	"android": '192.168.42.255',
+    "broadcast": '255.255.255.255',
+    "android": '192.168.42.255',
+    # "multicast": '239.255.232.32',
 }
 
+# default namespace for syncjams group of nodes
 NAMESPACE = "/syncjams"
 
-# seconds
-DROP_INACTIVE_CLIENT_TIME = 10
-RE_SEND_INTERVAL = 0.1
-
-class SyncjamsException(Exception):
-	pass
+# number of messages we will keep around for clients that miss some
+STORE_MESSAGES = 100
 
 class SyncjamsNode:
-	# map of known ClientIDs with information on messages send and received to/from them
-	# format:
-	# ClientID -> last_message_received_time, last_received_message_id, last_our_message_acknowledged_id
-	client_map = {}
-	
-	def __init__(self, handler, latency=0, *args, **kwargs):
-		self.DEBUG = kwargs.has_key("debug") and kwargs.pop("debug")
-		self.port = kwargs.has_key("port") and kwargs.pop("port") or PORT
-		# set up servers to listen on each broadcast address we want to listen on
-		# self.listeners = [SyncjamsListener(ADDRESSES["multicast"], self.port, callback=self.osc_message_handler)]
-		self.listeners = [SyncjamsListener(ADDRESSES["broadcast"], self.port, callback=self.osc_message_handler)]
-		# set up an osc sender to send out broadcast messages
-		self.sender = self.make_sender()
-		# randomly chosen client ID
-		self.client_id = randint(0, pow(2, 30))
-		# increment a message id every time we send
-		self.message_id = 0
-		# queue of messages which haven't been ack'ed by everyone
-		self.non_acked_queue = []
-		# last time our re-send happened
-		self.last_re_send_time = 0
-		# whether or not the server is running
-		self.running = False
-	
-	def make_sender(self):
-		# OSCClient that sends with broadcast flags on from any assigned port
-		sender = OSC.OSCClient()
-		sender.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-		sender.socket.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
-		sender.socket.bind((ANY, 0))
-		sender.socket.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, 255)
-		return sender
-	
-	def parse_id_slot(self, packet, idx):
-		try:
-			return int(packet.pop(idx))
-		except ValueError:
-			pass
-		except IndexError:
-			pass
-	
-	def drop(self, message, addr, tags, packet, source, route=None):
-		if self.DEBUG:
-			print "DROPPED (%s) from %s" % (message, OSC.getUrlStr(source))
-			print "\taddr:", addr
-			print "\ttypetags:", tags
-			print "\tdata:", packet
-			if route:
-				print "\troute:", route
-	
-	# define a message-handler function for the server to call.
-	def osc_message_handler(self, addr, tags, packet, source):
-		# make a copy of the incoming data packet for later
-		packet_copy = packet[:]
-		
-		# bail if incoming packets are not addressed to our top level namespace
-		if not addr.startswith(NAMESPACE):
-			self.drop("Bad namespace", addr, tags, packet_copy, source)
-			return
-		
-		# every message should contain the other client's id
-		client_id = self.parse_id_slot(packet, 0)
-		# bail if there wasn't a valid client id
-		if not client_id:
-			self.drop("No client_id", addr, tags, packet_copy, source)
-			return
-		
-		# digestible format for our address routing
-		route = addr[len(NAMESPACE) + 1:].split("/")
-		# every message should contain a message id
-		message_id = self.parse_id_slot(packet, 0)
-		# ensure there is a valid client map for this client
-		self.client_map[client_id] = self.client_map.get(client_id, [None, None, None])
-		# shortcut reference to a particular client's map
-		client = self.client_map[client_id]
-		# always set the last_message_received_time for any client we ever hear from
-		client[0] = time.time()
-		
-		# if this is a special ACK message for one of my sent
-		if len(route) and route[0] == "ACK":
-			# grab the id of the client this was destined for
-			dest_client_id = self.parse_id_slot(packet, 0)
-			# make sure ack is destined for me and make sure it's an unseen ack
-			if dest_client_id == self.client_id and (client[2] is None or message_id > client[2]):
-				# add the last_our_message_acknowledged_id to this client's map
-				client[2] = message_id
-				# print "ACK", client_id, message_id
-			# find the lowest acknowledged message from a still active client
-			lowest_message_id = self.message_id
-			for c in self.client_map:
-				# if this client is still active and the message_id is lower
-				if c[0] > time.time() - DROP_INACTIVE_CLIENT_TIME and not c[2] is None and c[2] < lowest_message_id:
-					lowest_message_id = c[2]
-			# prune any messages with a lower message_id
-			self.non_acked_queue = filter(lambda m: m[0] > lowest_message_id, self.non_acked_queue)
-		elif len(route) and route[0] == "metronome":
-			# special consensus metronome sync message
-			pass
-		elif len(route) and route[0] == "state":
-			# special state-variable message -> key=address value=message
-			pass
-		else:
-			# ack every message received
-			self.send("/ACK", [client_id], message_id=message_id)
-			# if this is the next in the sequence from this client then increment that counter
-			if client[1] is None or message_id == client[1] + 1:
-				client[1] = message_id
-				if self.DEBUG:
-					print "received from %s" % OSC.getUrlStr(source)
-					print "\troute:", route
-					print "\tdata:", packet
-			else:
-				self.drop("Old message", addr, tags, packet_copy, source)
-	
-	def send(self, address, message=[], message_id=None):
-		if not address.startswith("/"):
-			raise SyncjamsException("Address must start with '/'.")
-		# message_id increments for every message
-		if message_id is None:
-			self.message_id += 1
-			message_id = self.message_id
-		# set up the new OSC message to be sent out
-		oscmsg = OSC.OSCMessage()
-		oscmsg.setAddress(NAMESPACE + address)
-		# add the default syncjams parameters - client_id and message_id
-		oscmsg.append(self.client_id)
-		oscmsg.append(message_id)
-		# add whatever other data the user wants to send
-		if type(message) == list:
-			for m in message:
-				oscmsg.append(m)
-		else:
-			oscmsg.append(message)
-		# push the message onto our non-ack'ed queue to be re-sent until ack'ed
-		self.non_acked_queue.append((message_id, oscmsg))
-		# send the message to all broadcast networks
-		self.send_one_to_all(oscmsg)
-	
-	def re_send_non_acked(self):
-		# bail if not enough time has elapsed yet
-		if time.time() < self.last_re_send_time + RE_SEND_INTERVAL:
-			return
+    """
+        Network synchronised metronome and state for jamming with music applications.
+    """
+    def __init__(self, latency_ms=0, namespace=NAMESPACE, port=None, debug=False):
+        self.debug = debug
+        self.port = port or PORT
+        self.namespace = namespace
+        # set up servers to listen on each broadcast address we want to listen on
+        # self.listeners = [SyncjamsListener(ADDRESSES["multicast"], self.port, callback=self.osc_message_handler)]
+        self.listeners = [SyncjamsListener(ADDRESSES["broadcast"], self.port, callback=self._osc_message_handler)]
+        # set up an osc sender to send out broadcast messages
+        self.sender = self._make_sender()
+        # my randomly chosen NodeID
+        self.node_id = randint(0, pow(2, 30))
+        # increment a message id every time we send
+        self.message_id = 0
+        # whether or not the server is running
+        self.running = False
+        # collection of key->(node_id, message_id, tick, time_offset, value) state variables
+        self.states = {"/BPM": (self.node_id, 0, 0, 0, [180])}
+        # collection of last message_ids from other clients clientID->message_id
+        self.last_messages = {}
+        # last tick that happened (number, time)
+        self.last_tick = (0, time.time())
+        # queue of non-tick messages we have sent
+        self.sent_queue = []
+    
+    def set_state(self, address, message=[]):
+        """ Try to set a particular state variable on all nodes. """
+        if not address.startswith("/"):
+            raise SyncjamsException("State address must start with '/'.")
+        self._send("/state" + address, [self.last_tick[0], time.time() - self.last_tick[1]] + (type(message) == list and message or [message]))
+    
+    def get_state(self, address):
+        return self.states.get(address, (None, None, None, None, None))[2]
+    
+    def send(self, address, value=[]):
+        """ Broadcast an arbitrary message to all nodes. """
+        self._send(self, address, value)
+    
+    def poll(self):
+        """ Run the SyncJams inner loop once, processing network messages etc. """
+        for s in self.listeners:
+            s.handle_request()
+        self._process_tick()
+    
+    def serve_forever(self):
+        """ Set up a loop running the poll() forever. Good to call inside a Thread. """
+        self.running = True
+        while self.running:
+            self.poll()
+            time.sleep(0.001)
+    
+    def close(self):
+        """ Shut down the server and quit the serve_forever() loop, if running. """
+        self.running = False
+        [s.close() for s in self.listeners]
+        self.sender.close()
+    
+    ### Methods to override. ###
+    
+    def tick(self, tick, time):
+        pass
+    
+    def message(self, address, *args):
+        pass
+    
+    def state(self, address, *args):
+        pass
+    
+    ### Private methods. ###
+    
+    def _process_tick(self):
+        last_tick = self.last_tick[1]
+        # while our metronome is behind, catch it up
+        while self.last_tick[1] + self._tick_length() < time.time():
+            # calculate new tick position and time
+            self.last_tick = (self.last_tick[0] + 1, self.last_tick[1] + self._tick_length())
+            # register the current new tick so we can run code
+            self.tick(*self.last_tick)
+        # if the tick changed then broadcast the tick we think we are up to
+        if last_tick != self.last_tick[1]:
+            # broadcast what we think the current tick is to the network - and also our last known message IDs from peers
+            self._send_one_to_all("/tick", [self.node_id, self.last_tick[0]] + sum([[m, self.last_messages[m]] for m in self.last_messages], []))
+    
+    def _send(self, address, message=[]):
+        if not address.startswith("/"):
+            raise SyncjamsException("Address must start with '/'.")
+        # message_id increments for every message
+        self.message_id += 1
+        # set up the outgoing message
+        outgoing = []
+        # add the default syncjams parameters - node_id and message_id
+        outgoing.append(self.node_id)
+        outgoing.append(self.message_id)
+        # add whatever other data the user wants to send
+        if type(message) == list:
+            for m in message:
+                outgoing.append(m)
+        else:
+            outgoing.append(message)
+        # push the message onto our queue of potential repeats
+        self.sent_queue.append((self.message_id, address, outgoing))
+        # make sure our queue of sent messages stays an ok size
+        self.sent_queue = self.sent_queue[-STORE_MESSAGES:]
+        # send the message to all broadcast networks
+        self._send_one_to_all(address, outgoing)
+    
+    # message-handler function that servers will call when a message is received.
+    def _osc_message_handler(self, addr, tags, packet, source):
+        if self.debug:
+             print "raw packet", addr, packet
+        
+        # make a copy of the incoming data packet for later
+        packet_copy = packet[:]
+        
+        # bail if incoming packets are not addressed to our top level namespace
+        if not addr.startswith(self.namespace):
+            self.drop("Bad namespace", addr, tags, packet_copy, source)
+            return
+        
+        # every message should contain the other client's id
+        node_id = self._parse_number_slot(packet)
+        # bail if there wasn't a valid client id
+        if not node_id:
+            self._drop("No node_id", addr, tags, packet_copy, source)
+            return
+        
+        # digestible format for our address routing
+        route = addr[len(self.namespace) + 1:].split("/")
+        
+        # consensus metronome sync message
+        if len(route) and route[0] == "tick":
+            # which tick does the other client think we are up to
+            tick = self._parse_number_slot(packet)
+            # if the tick is higher than we expect at this point in time
+            if tick > self.last_tick[0]:
+                # jump to the new tick and reset our tick timer to this moment
+                self.last_tick = (tick, time.time())
+                # register the current new tick so we can run code
+                self.tick(*self.last_tick)
+            # check if we found our id and pull out their last message id from us too
+            found = [[packet[x*2], packet[x*2+1]] for x in range(len(packet) / 2) if packet[x*2] == self.node_id]
+            if found:
+                    # send through the messages that they are missing message_id, address, message
+                    [[self._send_one_to_all(m[1], m[2]) for m in self.sent_queue if m[0] > f[1]] for f in found]
+            else:
+                    # send through our last message plus the entire state
+                    if self.sent_queue:
+                        self._send_one_to_all(*(self.sent_queue[-1][1:]))
+                    # state flood to update them
+                    [self._send_one_to_all("/state" + s, self.states[s]) for s in self.states]
+        # state or message packet
+        else:
+            # every message should contain a message id
+            message_id = self._parse_number_slot(packet)
+            # if this is the next in the sequence from this client then increment that counter
+            if not (self.last_messages.get(node_id, None) is None or message_id == self.last_messages[node_id] + 1):
+                self._drop("Old message", addr, tags, packet_copy, source)
+            else:
+                # log that we have received latest message from this client
+                self.last_messages[node_id] = message_id
+                # received state update message
+                if len(route) and route[0] == "state":
+                    tick = self._parse_number_slot(packet)
+                    timediff = self._parse_number_slot(packet, coorce=float)
+                    key = "/" + "/".join(route[1:])
+                    # tick, time_offset, value
+                    if not self.states.has_key(key) or self.states[key][2] < tick or (self.states[key][2] == tick and self.states[key][3] < timediff):
+                        self.states[key] = (node_id, message_id, tick, timediff, packet)
+                        # run overridden API
+                        self.state(key, *packet)
+                # received regular broadcast message from a node
+                else:
+                    self.message("/" + "/".join(route), *packet)
+    
+    def _send_one_to_all(self, address, message):
+        # set up the new OSC message to be sent out
+        oscmsg = OSC.OSCMessage()
+        oscmsg.setAddress(self.namespace + address)
+        # add the message parts to it
+        [oscmsg.append(m) for m in message]
+        # send one message out to all broadcast/multicast networks possible, ignoring errors
+        for a in ADDRESSES:
+            try:
+                return self.sender.sendto(oscmsg, (ADDRESSES[a], self.port))
+            except OSCClientError, e:
+                # silently drop socket errors because we'll just keep trying
+                # TODO: log
+                print "Dropped message send:", oscmsg
+                print e
+    
+    ### Utility methods. ###
+    
+    def _tick_length(self):
+        try:
+            bpm = float(self.states["/BPM"][-1][0])
+        except ValueError:
+            bpm = 180
+        except IndexError:
+            bpm = 180
+        return 60.0 / bpm
+    
+    def _parse_number_slot(self, packet, idx=0, coorce=int):
+        try:
+            return coorce(packet.pop(idx))
+        except ValueError:
+            pass
+        except IndexError:
+            pass
+    
+    def _drop(self, message, addr, tags, packet, source, route=None):
+        if self.debug:
+            print "DROPPED (%s) from %s" % (message, OSC.getUrlStr(source))
+            print "\taddr:", addr
+            print "\ttypetags:", tags
+            print "\tdata:", packet
+            if route:
+                print "\troute:", route
+    
+    def _make_sender(self):
+        # OSCClient that sends with broadcast flags on from any assigned port
+        sender = OSC.OSCClient()
+        sender.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        sender.socket.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+        sender.socket.bind((ANY, 0))
+        sender.socket.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, 255)
+        return sender
 
-		# bail if no un-acked messages waiting
-		if not self.non_acked_queue:
-			return
-		
-		self.last_re_send_time = time.time()
-		for message_id, oscmsg in self.non_acked_queue:
-			print "Re-sending:", message_id, oscmsg
-			self.send_one_to_all(oscmsg)
-	
-	def send_one_to_all(self, oscmsg):
-		# send one message out to all broadcast/multicast networks possible, ignoring errors
-		for a in ADDRESSES:
-			try:
-				return self.sender.sendto(oscmsg, (ADDRESSES[a], self.port))
-			except OSCClientError, e:
-				# silently drop socket errors because we'll just keep trying
-				# TODO: log
-				print "Dropped message send:", oscmsg
-				print e
-	
-	def poll(self):
-		""" Run the SyncJams inner loop once, processing network messages etc. """
-		for s in self.listeners:
-			s.handle_request()
-		self.re_send_non_acked()
-	
-	def serve_forever(self):
-		while self.running:
-			self.poll()
-			time.sleep(0.001)
-	
-	def close(self):
-		self.running = False
-		[s.close() for s in self.listeners]
-		self.sender.close()
+class SyncjamsException(Exception):
+    pass
 
 # class that can listen out on a particular ip - reused to listen on different broadcast subnets
 class SyncjamsListener(OSC.OSCServer):
-	client = None
-	socket_timeout = 0
-	def __init__(self, address, port, callback, *args, **kwargs):
-		# check whether we have been asked to listen on a multicast address
-		self.multicast = address.startswith("239.255") or address.startswith("224.")
-		self.address = address
-		# set up the OSC server to listen
-		OSC.OSCServer.__init__(self, (self.multicast and ANY or address, port), *args, **kwargs)
-		# whatever messages come in, run the main callback
-		self.addMsgHandler("default", callback)
-	
-	def server_bind(self):
-		# allow multiple receivers on the same IP
-		self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-		# allow sending to broadcast networks
-		self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
-		# allow port re-use on platforms that require the flag
-		if 'SO_REUSEPORT' in vars(socket):
-			self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
-		# ask the OSC library to bind to ports etc
-		result = OSC.OSCServer.server_bind(self)
-		# finally set the multicast options if this is a multicast socket
-		self.socket.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, 255)
-		if self.multicast:
-			self.socket.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, socket.inet_aton(self.address) + socket.inet_aton(ANY))
-		return result
+    client = None
+    socket_timeout = 0
+    def __init__(self, address, port, callback, *args, **kwargs):
+        # check whether we have been asked to listen on a multicast address
+        self.multicast = address.startswith("239.255") or address.startswith("224.")
+        self.address = address
+        # set up the OSC server to listen
+        OSC.OSCServer.__init__(self, (self.multicast and ANY or address, port), *args, **kwargs)
+        # whatever messages come in, run the main callback
+        self.addMsgHandler("default", callback)
+    
+    def server_bind(self):
+        # allow multiple receivers on the same IP
+        self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        # allow sending to broadcast networks
+        self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+        # allow port re-use on platforms that require the flag
+        if 'SO_REUSEPORT' in vars(socket):
+            self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
+        # ask the OSC library to bind to ports etc
+        result = OSC.OSCServer.server_bind(self)
+        # finally set the multicast options if this is a multicast socket
+        self.socket.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, 255)
+        if self.multicast:
+            self.socket.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, socket.inet_aton(self.address) + socket.inet_aton(ANY))
+        return result
 
 # Test code for running an interactive version that prints results
 if __name__ == "__main__":
-	# setup handler for receiving message from syncjams network
-	class TestNetsyncHandler:
-		def receive(route, message):
-			print "Test received:", route, message
-	
-	# Start a test syncjams instance
-	s = SyncjamsNode(debug=True, handler=TestNetsyncHandler())
-	print "Starting SyncJams node."
-	from threading import Thread
-	st = Thread( target = s.serve_forever )
-	st.start()
-	
-	banner = """SyncjamsNode is 's'. Send with `s.send('/myaddress/test', [1, 2, 3, "hello"])`"""
-	try:
-		from IPython.terminal.embed import InteractiveShellEmbed
-		InteractiveShellEmbed(banner1=banner)()
-	except ImportError:
-		import code
-		code.InteractiveConsole(locals=globals()).interact(banner)
-	
-	print "Shutting down SyncJams node."
-	s.close()
-	print "Waiting for thread to finish."
-	st.join()
-	print "Done."
+    # setup handler for receiving message from syncjams network
+    class TestSyncjamsNode(SyncjamsNode):
+        def tick(self, tick, time):
+            if not tick % 16:
+                print "Tick %d at %s" % (tick, time)
+        
+        def state(self, address, *state):
+            print "State update: %s = %s" % (address, str(state))
+        
+        def message(self, address, *message):
+            print "Message to %s = %s" % (address, message)
+    
+    # Start a test syncjams instance
+    s = TestSyncjamsNode(debug=True)
+    print "Starting SyncJams node."
+    from threading import Thread
+    st = Thread( target = s.serve_forever )
+    st.start()
+    
+    banner = """SyncjamsNode is 's'. Examples:
+        s.set_state('/fader/volume', 12)
+        s.set_state('/key/0', [60, 64, 67])
+        s.set_state('/BPM', 145)
+        s.send('/endpoint/test', "This is my message.")
+    """
+    try:
+        from IPython.terminal.embed import InteractiveShellEmbed
+        InteractiveShellEmbed(banner1=banner)()
+    except ImportError:
+        import code
+        code.InteractiveConsole(locals=globals()).interact(banner)
+    
+    print "Shutting down SyncJams node."
+    s.close()
+    print "Waiting for thread to finish."
+    st.join()
+    print "Done."
 
