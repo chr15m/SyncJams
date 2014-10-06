@@ -50,6 +50,8 @@ class SyncjamsNode:
         self.last_tick = (0, time.time())
         # queue of non-tick messages we have sent
         self.sent_queue = []
+        # kick things off with an initial connect message
+        self.send("/connect")
     
     def set_state(self, address, message=[]):
         """ Try to set a particular state variable on all nodes. """
@@ -62,7 +64,7 @@ class SyncjamsNode:
     
     def send(self, address, value=[]):
         """ Broadcast an arbitrary message to all nodes. """
-        self._send(self, address, value)
+        self._send(address, value)
     
     def poll(self):
         """ Run the SyncJams inner loop once, processing network messages etc. """
@@ -106,8 +108,11 @@ class SyncjamsNode:
             self.tick(*self.last_tick)
         # if the tick changed then broadcast the tick we think we are up to
         if last_tick != self.last_tick[1]:
-            # broadcast what we think the current tick is to the network - and also our last known message IDs from peers
-            self._send_one_to_all("/tick", [self.node_id, self.last_tick[0]] + sum([[m, self.last_messages[m]] for m in self.last_messages], []))
+            self._broadcast_tick()
+
+    def _broadcast_tick(self):
+        # broadcast what we think the current tick is to the network - and also our last known message IDs from peers
+        self._send_one_to_all("/tick", [self.node_id, self.last_tick[0]] + sum([[m, self.last_messages[m]] for m in self.last_messages], []))
     
     def _send(self, address, message=[]):
         if not address.startswith("/"):
@@ -165,12 +170,14 @@ class SyncjamsNode:
                 self.last_tick = (tick, time.time())
                 # register the current new tick so we can run code
                 self.tick(*self.last_tick)
+                # send out our new tick anyway so everyone learns our last_message list
+                self._broadcast_tick()
             # check if we found our id and pull out their last message id from us too
             found = [[packet[x*2], packet[x*2+1]] for x in range(len(packet) / 2) if packet[x*2] == self.node_id]
-            if found:
+            for f in found:
                     # send through the messages that they are missing message_id, address, message
-                    [[self._send_one_to_all(m[1], m[2]) for m in self.sent_queue if m[0] > f[1]] for f in found]
-            else:
+                    [self._send_one_to_all(m[1], m[2]) for m in self.sent_queue if m[0] > f[1]]
+            if not len(found):
                     # send through our last message plus the entire state
                     if self.sent_queue:
                         self._send_one_to_all(*(self.sent_queue[-1][1:]))
@@ -181,7 +188,7 @@ class SyncjamsNode:
             # every message should contain a message id
             message_id = self._parse_number_slot(packet)
             # if this is the next in the sequence from this client then increment that counter
-            if not (self.last_messages.get(node_id, None) is None or message_id == self.last_messages[node_id] + 1):
+            if not ((self.last_messages.get(node_id, None) is None) or (message_id == self.last_messages[node_id] + 1)):
                 self._drop("Old message", addr, tags, packet_copy, source)
             else:
                 # log that we have received latest message from this client
@@ -304,7 +311,7 @@ if __name__ == "__main__":
     
     # Start a test syncjams instance
     s = TestSyncjamsNode(debug=len(sys.argv) > 1)
-    print "Starting SyncJams node."
+    print "Starting SyncJams node ID =", s.node_id
     st = Thread( target = s.serve_forever )
     st.start()
     
