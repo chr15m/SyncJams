@@ -12,7 +12,7 @@ PORT = 23232
 
 ANY = '0.0.0.0'
 ADDRESSES = {
-    "broadcast": '255.255.255.255',
+    "broadcast": '<broadcast>',
     "android": '192.168.42.255',
     # "multicast": '239.255.232.32',
 }
@@ -33,7 +33,7 @@ class SyncjamsNode:
         self.namespace = namespace
         # set up servers to listen on each broadcast address we want to listen on
         # self.listeners = [SyncjamsListener(ADDRESSES["multicast"], self.port, callback=self.osc_message_handler)]
-        self.listeners = [SyncjamsListener(ADDRESSES["broadcast"], self.port, callback=self._osc_message_handler)]
+        self.listeners = [SyncjamsListener(ANY, self.port, callback=self._osc_message_handler)]
         # set up an osc sender to send out broadcast messages
         self.sender = self._make_sender()
         # my randomly chosen NodeID
@@ -287,6 +287,9 @@ class SyncjamsListener(OSC.OSCServer):
 
 # Test code for running an interactive version that prints results
 if __name__ == "__main__":
+    import sys
+    from threading import Thread
+
     # setup handler for receiving message from syncjams network
     class TestSyncjamsNode(SyncjamsNode):
         def tick(self, tick, time):
@@ -300,9 +303,8 @@ if __name__ == "__main__":
             print "Message to %s = %s" % (address, message)
     
     # Start a test syncjams instance
-    s = TestSyncjamsNode(debug=True)
+    s = TestSyncjamsNode(debug=len(sys.argv) > 1)
     print "Starting SyncJams node."
-    from threading import Thread
     st = Thread( target = s.serve_forever )
     st.start()
     
