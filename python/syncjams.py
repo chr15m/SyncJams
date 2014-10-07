@@ -22,6 +22,8 @@ NAMESPACE = "/syncjams"
 
 # number of messages we will keep around for clients that miss some
 STORE_MESSAGES = 100
+# how many seconds before we decide a node has left
+NODE_TIMEOUT = 30
 
 class SyncjamsNode:
     """
@@ -44,8 +46,10 @@ class SyncjamsNode:
         self.running = False
         # collection of key->(node_id, message_id, tick, time_offset, value) state variables
         self.states = {"/BPM": (self.node_id, 0, 0, 0, [180])}
-        # collection of last message_ids from other clients clientID->message_id
+        # collection of last message_ids from other clients nodeID -> message_id
         self.last_messages = {}
+        # last time we saw a client nodeID -> our_timestamp
+        self.last_seen = {}
         # last tick that happened (number, time)
         self.last_tick = (0, time.time())
         # queue of non-tick messages we have sent
@@ -60,7 +64,8 @@ class SyncjamsNode:
         self._send("/state" + address, [self.last_tick[0], time.time() - self.last_tick[1]] + (type(message) == list and message or [message]))
     
     def get_state(self, address):
-        return self.states.get(address, (None, None, None, None, None))[2]
+        state = self.states.get(address, (None, None, None, None, None))[-1]
+        return len(state) == 1 and state[0] or state
     
     def send(self, address, value=[]):
         """ Broadcast an arbitrary message to all nodes. """
@@ -100,8 +105,9 @@ class SyncjamsNode:
     
     def _process_tick(self):
         last_tick = self.last_tick[1]
+        now = time.time()
         # while our metronome is behind, catch it up
-        while self.last_tick[1] + self._tick_length() < time.time():
+        while self.last_tick[1] + self._tick_length() < now:
             # calculate new tick position and time
             self.last_tick = (self.last_tick[0] + 1, self.last_tick[1] + self._tick_length())
             # register the current new tick so we can run code
@@ -109,7 +115,20 @@ class SyncjamsNode:
         # if the tick changed then broadcast the tick we think we are up to
         if last_tick != self.last_tick[1]:
             self._broadcast_tick()
-
+            # every tick forget about any nodes we haven't seen in a while
+            self._forget_old_nodes(now)
+    
+    def _forget_old_nodes(self, now):
+            # find nodes we have not hear from for more than timeout
+            forget = [n for n in self.last_seen if (self.last_seen[n] + NODE_TIMEOUT < now)]
+            if self.debug and forget:
+                print "forgetting:", forget
+            # remove references to those nodes
+            for n in forget:
+                del self.last_seen[n]
+                if self.last_messages.has_key(n):
+                    del self.last_messages[n]
+    
     def _broadcast_tick(self):
         # broadcast what we think the current tick is to the network - and also our last known message IDs from peers
         self._send_one_to_all("/tick", [self.node_id, self.last_tick[0]] + sum([[m, self.last_messages[m]] for m in self.last_messages], []))
@@ -156,6 +175,9 @@ class SyncjamsNode:
         if not node_id:
             self._drop("No node_id", addr, tags, packet_copy, source)
             return
+        
+        # record when we last saw this particular node
+        self.last_seen[node_id] = time.time()
         
         # digestible format for our address routing
         route = addr[len(self.namespace) + 1:].split("/")
