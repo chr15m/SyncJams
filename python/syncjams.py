@@ -70,6 +70,9 @@ class SyncjamsNode:
     def get_node_id(self):
         return self.node_id
     
+    def get_node_list(self):
+        return self.last_messages.keys()
+    
     def send(self, address, value=[]):
         """ Broadcast an arbitrary message to all nodes. """
         self._send(address, value)
