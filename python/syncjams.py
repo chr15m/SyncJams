@@ -67,6 +67,9 @@ class SyncjamsNode:
         state = self.states.get(address, (None, None, None, None, None))[-1]
         return len(state) == 1 and state[0] or state
     
+    def get_node_id(self):
+        return self.node_id
+    
     def send(self, address, value=[]):
         """ Broadcast an arbitrary message to all nodes. """
         self._send(address, value)
