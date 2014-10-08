@@ -95,10 +95,10 @@ class SyncjamsNode:
     def tick(self, tick, time):
         pass
     
-    def message(self, address, *args):
+    def message(self, node_id, address, *args):
         pass
     
-    def state(self, address, *args):
+    def state(self, node_id, address, *args):
         pass
     
     ### Private methods. ###
@@ -223,11 +223,12 @@ class SyncjamsNode:
                     # tick, time_offset, value
                     if not self.states.has_key(key) or self.states[key][2] < tick or (self.states[key][2] == tick and self.states[key][3] < timediff):
                         self.states[key] = (node_id, message_id, tick, timediff, packet)
-                        # run overridden API
-                        self.state(key, *packet)
+                        # run the state change callback
+                        self.state(node_id, key, *packet)
                 # received regular broadcast message from a node
                 else:
-                    self.message("/" + "/".join(route), *packet)
+                    # run the message callback
+                    self.message(node_id, "/" + "/".join(route), *packet)
     
     def _send_one_to_all(self, address, message):
         # set up the new OSC message to be sent out
@@ -325,11 +326,11 @@ if __name__ == "__main__":
             if not tick % 16:
                 print "Tick %d at %s" % (tick, time)
         
-        def state(self, address, *state):
-            print "State update: %s = %s" % (address, str(state))
+        def state(self, node_id, address, *state):
+            print "State update: %s = %s (from node %d)" % (address, str(state), node_id)
         
-        def message(self, address, *message):
-            print "Message to %s = %s" % (address, message)
+        def message(self, node_id, address, *message):
+            print "Message to %s = %s (from node %d)" % (address, message, node_id)
     
     # Start a test syncjams instance
     s = TestSyncjamsNode(debug=len(sys.argv) > 1)
