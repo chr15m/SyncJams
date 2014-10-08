@@ -3,10 +3,12 @@
 # PEP8 all up in here:
 # vim: tabstop=8 expandtab shiftwidth=4 softtabstop=4 smartindent
 
-import OSC
 import socket
 import time
 from random import randint
+import logging
+
+import OSC
 
 PORT = 23232
 
@@ -29,8 +31,13 @@ class SyncjamsNode:
     """
         Network synchronised metronome and state for jamming with music applications.
     """
-    def __init__(self, latency_ms=0, namespace=NAMESPACE, port=None, debug=False):
-        self.debug = debug
+    def __init__(self, latency_ms=0, namespace=NAMESPACE, port=None, loglevel=logging.ERROR, logfile=None):
+        # set up basic logging
+        logging_config = {"level": loglevel}
+        if logfile:
+            logging_config["filename"] = logfile
+        logging.basicConfig(**logging_config)
+        # basic configuration to separate this network singleton from another
         self.port = port or PORT
         self.namespace = namespace
         # set up servers to listen on each broadcast address we want to listen on
@@ -127,8 +134,8 @@ class SyncjamsNode:
     def _forget_old_nodes(self, now):
             # find nodes we have not hear from for more than timeout
             forget = [n for n in self.last_seen if (self.last_seen[n] + NODE_TIMEOUT < now)]
-            if self.debug and forget:
-                print "forgetting:", forget
+            if forget:
+                logging.info("forgetting nodes %s" % forget)
             # remove references to those nodes
             for n in forget:
                 del self.last_seen[n]
@@ -164,8 +171,7 @@ class SyncjamsNode:
     
     # message-handler function that servers will call when a message is received.
     def _osc_message_handler(self, addr, tags, packet, source):
-        if self.debug:
-             print "raw packet", addr, packet
+        logging.info("raw packet %s %s" % (addr, packet))
         
         # make a copy of the incoming data packet for later
         packet_copy = packet[:]
@@ -249,8 +255,9 @@ class SyncjamsNode:
             except OSCClientError, e:
                 # silently drop socket errors because we'll just keep trying
                 # TODO: log
-                print "Dropped message send:", oscmsg
-                print e
+                logging.warning("Dropped message send:")
+                logging.warning(oscmsg)
+                logging.warning(e)
     
     ### Utility methods. ###
     
@@ -272,13 +279,12 @@ class SyncjamsNode:
             pass
     
     def _drop(self, message, addr, tags, packet, source, route=None):
-        if self.debug:
-            print "DROPPED (%s) from %s" % (message, OSC.getUrlStr(source))
-            print "\taddr:", addr
-            print "\ttypetags:", tags
-            print "\tdata:", packet
-            if route:
-                print "\troute:", route
+        logging.debug("DROPPED (%s) from %s" % (message, OSC.getUrlStr(source)))
+        logging.debug("\taddr: %s" % addr)
+        logging.debug("\ttypetags: %s" % tags)
+        logging.debug("\tdata: %s" % packet)
+        if route:
+            logging.debug("\troute: %s" % route)
     
     def _make_sender(self):
         # OSCClient that sends with broadcast flags on from any assigned port
@@ -339,8 +345,8 @@ if __name__ == "__main__":
             print "Message to %s = %s (from node %d)" % (address, message, node_id)
     
     # Start a test syncjams instance
-    s = TestSyncjamsNode(debug=len(sys.argv) > 1)
-    print "Starting SyncJams node ID =", s.node_id
+    s = TestSyncjamsNode(loglevel=len(sys.argv) > 1 and getattr(logging, sys.argv[1]) or logging.ERROR)
+    print "Starting SyncJams node ID =", s.get_node_id()
     st = Thread( target = s.serve_forever )
     st.start()
     
