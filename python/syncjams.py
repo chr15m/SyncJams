@@ -40,8 +40,11 @@ class SyncjamsNode:
         # basic configuration to separate this network singleton from another
         self.port = port or PORT
         self.namespace = namespace
+        self.latency_ms = latency_ms
         # my randomly chosen NodeID
-        self.node_id = randint(0, pow(2, 30))
+        # (2^23-1 can be represented completely in 32-bit floating point, which some platforms require)
+        # about one in eight million chance of collision
+        self.node_id = randint(1, pow(2, 23))
         # increment our message id every time we send
         self.message_id = 0
         # whether or not the server is running
@@ -56,8 +59,8 @@ class SyncjamsNode:
         self.last_tick = (0, time.time())
         # queue of non-tick messages we have sent
         self.sent_queue = []
-        # kick things off with an initial connect message
-        #self.send("/connect")
+        # check sum of state that we send to see if all nodes are in agreement (state:client_id, state:msg_id, state:tick)
+        self.state_checksums = [0, 0, 0]
         # set up an osc sender to send out broadcast messages
         self.sender = self._make_sender()
         # set up servers to listen on each broadcast address we want to listen on
@@ -118,7 +121,7 @@ class SyncjamsNode:
         pass
     
     def audio_tick(self, tick):
-        """ Tick that has been compensated for latency. """
+        """ Metronome tick that has been compensated for latency (usually occurs earlier than logical tick() method). """
         pass
         
     def message(self, node_id, address, *args):
@@ -142,16 +145,16 @@ class SyncjamsNode:
     def _process_tick(self):
         last_tick = self.last_tick[1]
         now = time.time()
+        tick_length = self._tick_length()
         # while our metronome is behind, catch it up
-        while self.last_tick[1] + self._tick_length() < now:
+        while self.last_tick[1] + tick_length < now:
             # calculate new tick position and time
-            self.last_tick = (self.last_tick[0] + 1, self.last_tick[1] + self._tick_length())
+            self.last_tick = (self.last_tick[0] + 1, self.last_tick[1] + tick_length)
             # register the current new tick so we can run code
             self.tick(*self.last_tick)
         # if the tick changed then broadcast the tick we think we are up to
         if last_tick != self.last_tick[1]:
             self._broadcast_tick()
-            self._broadcast_client_state_hash()
             # every tick forget about any nodes we haven't seen in a while
             self._forget_old_nodes(now)
     
@@ -173,19 +176,30 @@ class SyncjamsNode:
                 # run the node_left callback method
                 self.node_left(node_id)
     
+    def _update_state_checksums(self):
+            # for the first three elements of each state (node_id, msg_id, tick)
+            # generate a checksum based on the sorted list of those values
+            state_checksums = []
+            for x in range(3):
+                sum_source = sorted([self.states[s][x] for s in self.states])
+                state_checksums.append(self._array_checksum(sum_source))
+            self.state_checksums = state_checksums
+            logging.info("Updated state checksums %s" % self.state_checksums)
+    
     def _broadcast_tick(self):
-        # broadcast what we think the current tick is to the network - and also our last known message IDs from peers
+        # broadcast what we think the current tick is to the network
+        # and checksums for what we think current state is
+        # and also our last known message IDs from all peers
+        # around 50 peers this will exceed typical 512 byte UDP packet size
         self._send_one_to_all("/tick",
             [self.node_id, self.last_tick[0]] +
+            self.state_checksums +
             sum([[m, self.last_messages[m]] for m in self.last_messages], [])
         )
     
-    def _broadcast_client_state_hash(self):
-        # broadcast what we think the current state map is (node_id, msg_id) pairs
-        self._send_one_to_all("/hash",
-            [self.node_id] +
-            sum([self.states[s][:2] for s in self.states], [])
-        )
+    def _broadcast_state_hash(self):
+        # broadcast what we think the current state map is - (node_id, msg_id) pairs are unique
+        self._send_one_to_all("/state-hash", [self.node_id] + sum([self.states[s][:2] for s in self.states], []))
     
     def _send(self, address, message=[]):
         if not address.startswith("/"):
@@ -212,7 +226,7 @@ class SyncjamsNode:
     
     # message-handler function that servers will call when a message is received.
     def _osc_message_handler(self, addr, tags, packet, source):
-        logging.info("raw packet %s %s" % (addr, packet))
+        logging.debug("raw packet %s %s" % (addr, packet))
         
         # bail if incoming packets are not addressed to our top level namespace
         if not addr.startswith(self.namespace):
@@ -246,8 +260,16 @@ class SyncjamsNode:
                 self.tick(*self.last_tick)
                 # send out our new tick anyway so everyone learns our last_message list
                 self._broadcast_tick()
+            # remainder of the tick message is their state checksums and then last node message ids
+            state_checksums = packet[:3]
+            message_ids = packet[3:]
+            # compare their state checksums to our own
+            if state_checksums != self.state_checksums:
+                logging.debug("State checksums don't match, broadcasting state hash.");
+                # if we disagree about global state, broadcast what we think global state is
+                self._broadcast_state_hash()
             # build a dictionary of their known nodes and latest message ids
-            their_latest_messages = dict([(packet[x*2], packet[x*2+1]) for x in range(len(packet) / 2)])
+            their_latest_messages = dict([(message_ids[x*2], message_ids[x*2+1]) for x in range(len(message_ids) / 2)])
             # send through the messages from me that they are missing message_id, address, message
             [self._send_one_to_all(m[1], m[2]) for m in self.sent_queue if m[0] > their_latest_messages.get(self.node_id, 0)]
             # if this is the first time we have seen this node then run the callback method
@@ -261,7 +283,7 @@ class SyncjamsNode:
             self._forget_old_nodes(time.time(), [node_id])
         
         # packet containing what another client thinks is current state
-        elif route[0] == "hash":
+        elif route[0] == "state-hash":
             # build a list of their state keys (node_id, message_id) 
             their_state_keys = [tuple(packet[x:x+2]) for x in xrange(0, len(packet), 2)]
             # find states they don't have, and which are older than 3 ticks
@@ -276,7 +298,7 @@ class SyncjamsNode:
             # every message should contain a message id
             message_id = self._parse_number_slot(packet)
             # if this is the next in the sequence from this client then increment that counter
-            if message_id == self.last_messages.get(node_id, 0) + 1:
+            if not self.last_messages.has_key(node_id) or message_id == self.last_messages.get(node_id, 0) + 1:
                 self.last_messages[node_id] = message_id
                 # run the message callback if this isn't a state message
                 if not len(route) or route[0] != "state":
@@ -285,7 +307,7 @@ class SyncjamsNode:
             if len(route) and route[0] == "state":
                 # when was this state change according to consensus clock
                 tick = self._parse_number_slot(packet)
-                timediff = self._parse_number_slot(packet, coorce=float)
+                timediff = self._parse_number_slot(packet, convert=float)
                 # what key the state change is stored on
                 key = "/" + "/".join(route[1:])
                 # tick, time_offset, value
@@ -293,14 +315,16 @@ class SyncjamsNode:
                     self.states[key] = [node_id, message_id, tick, timediff, packet]
                     # run the state change callback
                     self.state(node_id, key, *packet)
-        
+                    # update our state checksums
+                    self._update_state_checksums()
+    
     def _send_one_to_all(self, address, message):
         # set up the new OSC message to be sent out
         oscmsg = OSC.OSCMessage()
         oscmsg.setAddress(self.namespace + address)
         # add the message parts to it
         [oscmsg.append(m) for m in message]
-        logging.info("raw sent packet %s" % (oscmsg,))
+        logging.debug("raw sent packet %s" % (oscmsg,))
         # send one message out to all broadcast/multicast networks possible, ignoring errors
         for a in ADDRESSES:
             try:
@@ -314,6 +338,18 @@ class SyncjamsNode:
     
     ### Utility methods. ###
     
+    def _array_checksum(self, values):
+        # hacked version of djb2 hash
+        # works up to pow(2, 23) for systems where everything is floating point
+        # test:
+        # s._array_checksum([12, 432, 3, 0, 2343]) == 7987
+        # s._array_checksum([0.223, 4234, 0.242435, .76653, 3, 23.35, 656, 43]) == 62475
+        # s._array_checksum([122112, 4321, 123, 11, 14, 4, 43, 8388606, 3, 432, 545]) == 54865
+        h = 1
+        for v in values:
+            h = ((int(int(33 * h) % 65535) ^ int(v % 65535)) % 65535)
+        return h
+    
     def _tick_length(self):
         try:
             bpm = float(self.states["/BPM"][-1][0])
@@ -323,9 +359,9 @@ class SyncjamsNode:
             bpm = 180
         return 60.0 / bpm
     
-    def _parse_number_slot(self, packet, idx=0, coorce=int):
+    def _parse_number_slot(self, packet, idx=0, convert=int):
         try:
-            return coorce(packet.pop(idx))
+            return convert(packet.pop(idx))
         except ValueError:
             pass
         except IndexError:
