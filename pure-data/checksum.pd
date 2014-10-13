@@ -1,0 +1,55 @@
+#N canvas 137 177 732 396 10;
+#X msg 178 86 list 12 432 3 0 2343;
+#X obj 205 217 t l;
+#X obj 122 217 list split 1;
+#X obj 122 240 list prepend;
+#X obj 209 240 t l;
+#X obj 94 263 list;
+#X obj 94 285 list split 1;
+#X obj 181 285 t l;
+#X obj 94 193 t b a b b;
+#X obj 67 340 f;
+#X obj 67 173 t b a;
+#X obj 249 280 f;
+#X msg 249 257 1;
+#X obj 94 313 expr ((((33 * $f2) % 65535) ^ ($f1 % 65535)) % 65535)
+;
+#X msg 212 135 0.223 4234 0.242435 0.76653 3 23.35 656 43;
+#X msg 196 109 list 122112 4321 123 11 14 4 43 8.38861e+06 3 432 545
+;
+#X obj 67 56 inlet;
+#X obj 67 371 outlet;
+#X floatatom 122 373 10 0 0 0 - - -, f 10;
+#X text 185 62 test values;
+#X text 23 9 hacked version of djb2 checksum that works on systems
+like Pd where floating points don't always have exact precision above
+pow(2 \, 23).;
+#X text 323 85 7987;
+#X text 510 111 54865;
+#X text 480 134 62475;
+#X connect 0 0 10 0;
+#X connect 1 0 2 0;
+#X connect 2 0 3 0;
+#X connect 2 1 1 0;
+#X connect 3 0 4 0;
+#X connect 3 0 5 1;
+#X connect 4 0 3 1;
+#X connect 5 0 6 0;
+#X connect 6 0 13 0;
+#X connect 6 1 7 0;
+#X connect 7 0 6 0;
+#X connect 8 0 5 0;
+#X connect 8 1 2 0;
+#X connect 8 2 3 1;
+#X connect 8 3 12 0;
+#X connect 9 0 17 0;
+#X connect 9 0 18 0;
+#X connect 10 0 9 0;
+#X connect 10 1 8 0;
+#X connect 11 0 13 1;
+#X connect 12 0 11 0;
+#X connect 13 0 11 0;
+#X connect 13 0 9 1;
+#X connect 14 0 10 0;
+#X connect 15 0 10 0;
+#X connect 16 0 10 0;
