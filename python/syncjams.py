@@ -31,7 +31,7 @@ class SyncjamsNode:
     """
         Network synchronised metronome and state for jamming with music applications.
     """
-    def __init__(self, latency_ms=0, namespace=NAMESPACE, port=None, loglevel=logging.ERROR, logfile=None):
+    def __init__(self, latency_ms=0, initial_state={}, namespace=NAMESPACE, port=None, loglevel=logging.ERROR, logfile=None):
         # set up basic logging
         logging_config = {"level": loglevel}
         if logfile:
@@ -40,19 +40,14 @@ class SyncjamsNode:
         # basic configuration to separate this network singleton from another
         self.port = port or PORT
         self.namespace = namespace
-        # set up servers to listen on each broadcast address we want to listen on
-        # self.listeners = [SyncjamsListener(ADDRESSES["multicast"], self.port, callback=self.osc_message_handler)]
-        self.listeners = [SyncjamsListener(ANY, self.port, callback=self._osc_message_handler)]
-        # set up an osc sender to send out broadcast messages
-        self.sender = self._make_sender()
         # my randomly chosen NodeID
         self.node_id = randint(0, pow(2, 30))
-        # increment a message id every time we send
+        # increment our message id every time we send
         self.message_id = 0
         # whether or not the server is running
         self.running = False
         # collection of key->(node_id, message_id, tick, time_offset, value) state variables
-        self.states = {"/BPM": (self.node_id, 0, 0, 0, [180])}
+        self.states = {}
         # collection of last message_ids from other clients nodeID -> message_id
         self.last_messages = {}
         # last time we saw a client nodeID -> our_timestamp
@@ -62,7 +57,17 @@ class SyncjamsNode:
         # queue of non-tick messages we have sent
         self.sent_queue = []
         # kick things off with an initial connect message
-        self.send("/connect")
+        #self.send("/connect")
+        # set up an osc sender to send out broadcast messages
+        self.sender = self._make_sender()
+        # set up servers to listen on each broadcast address we want to listen on
+        # self.listeners = [SyncjamsListener(ADDRESSES["multicast"], self.port, callback=self.osc_message_handler)]
+        self.listeners = [SyncjamsListener(ANY, self.port, callback=self._osc_message_handler)]
+        # initial BPM state is required
+        initial_state["/BPM"] = 180
+        # start by establishing my initial state
+        for s in initial_state:
+            self.set_state(s, initial_state[s])
     
     def set_state(self, address, message=[]):
         """ Try to set a particular state variable on all nodes. """
@@ -71,7 +76,7 @@ class SyncjamsNode:
         self._send("/state" + address, [self.last_tick[0], time.time() - self.last_tick[1]] + (type(message) == list and message or [message]))
     
     def get_state(self, address):
-        state = self.states.get(address, (None, None, None, None, None))[-1]
+        state = self.states.get(address, [None, None, None, None, None])[-1]
         return len(state) == 1 and state[0] or state
     
     def get_node_id(self):
@@ -99,6 +104,7 @@ class SyncjamsNode:
     
     def close(self):
         """ Shut down the server and quit the serve_forever() loop, if running. """
+        self._send("/leave")
         self.running = False
         [s.close() for s in self.listeners]
         self.sender.close()
@@ -134,12 +140,13 @@ class SyncjamsNode:
         # if the tick changed then broadcast the tick we think we are up to
         if last_tick != self.last_tick[1]:
             self._broadcast_tick()
+            self._broadcast_client_state_hash()
             # every tick forget about any nodes we haven't seen in a while
             self._forget_old_nodes(now)
     
-    def _forget_old_nodes(self, now):
+    def _forget_old_nodes(self, now, forget=[]):
             # find nodes we have not hear from for more than timeout
-            forget = [node_id for node_id in self.last_seen if (self.last_seen[node_id] + NODE_TIMEOUT < now)]
+            forget = forget + [node_id for node_id in self.last_seen if (self.last_seen[node_id] + NODE_TIMEOUT < now)]
             if forget:
                 logging.info("forgetting nodes %s" % forget)
             # remove references to those nodes
@@ -155,15 +162,18 @@ class SyncjamsNode:
                 # run the node_left callback method
                 self.node_left(node_id)
     
-    def _get_orphaned_states(self):
-        return [s for s in self.states if not self.states[s][0] in self.last_seen.keys()]
-    
     def _broadcast_tick(self):
         # broadcast what we think the current tick is to the network - and also our last known message IDs from peers
         self._send_one_to_all("/tick",
             [self.node_id, self.last_tick[0]] +
-            sum([[m, self.last_messages[m]] for m in self.last_messages], []) +
-            sum([list(self.states[s][:2]) for s in self._get_orphaned_states()], [])
+            sum([[m, self.last_messages[m]] for m in self.last_messages], [])
+        )
+    
+    def _broadcast_client_state_hash(self):
+        # broadcast what we think the current state map is (node_id, msg_id) pairs
+        self._send_one_to_all("/hash",
+            [self.node_id] +
+            sum([self.states[s][:2] for s in self.states], [])
         )
     
     def _send(self, address, message=[]):
@@ -193,26 +203,28 @@ class SyncjamsNode:
     def _osc_message_handler(self, addr, tags, packet, source):
         logging.info("raw packet %s %s" % (addr, packet))
         
-        # make a copy of the incoming data packet for later
-        packet_copy = packet[:]
-        
         # bail if incoming packets are not addressed to our top level namespace
         if not addr.startswith(self.namespace):
-            self.drop("Bad namespace", addr, tags, packet_copy, source)
+            self.drop("Bad namespace", addr, tags, packet, source)
             return
         
         # every message should contain the other client's id
         node_id = self._parse_number_slot(packet)
         # bail if there wasn't a valid client id
         if not node_id:
-            self._drop("No node_id", addr, tags, packet_copy, source)
+            self._drop("No node_id", addr, tags, packet, source)
             return
         
         # digestible format for our address routing
         route = addr[len(self.namespace) + 1:].split("/")
         
+        # bail if invalid address - no components
+        if not len(route):
+            self._drop("No valid address", addr, tags, packet, source)
+            return
+        
         # consensus metronome sync message
-        if len(route) and route[0] == "tick":
+        if route[0] == "tick":
             # which tick does the other client think we are up to
             tick = self._parse_number_slot(packet)
             # if the tick is higher than we expect at this point in time
@@ -227,42 +239,50 @@ class SyncjamsNode:
             their_latest_messages = dict([(packet[x*2], packet[x*2+1]) for x in range(len(packet) / 2)])
             # send through the messages from me that they are missing message_id, address, message
             [self._send_one_to_all(m[1], m[2]) for m in self.sent_queue if m[0] > their_latest_messages.get(self.node_id, 0)]
-            # find zombie states that have an id that is not in their list and is a dead node (can't rebroadcast itself)
-            for s in self.states:
-                if not their_latest_messages.has_key(self.states[s][0]):
-                    # rebroadcast the state message
-                    self._send_one_to_all("/bash-state" + s, self.states[s])
             # if this is the first time we have seen this node then run the callback method
             if not self.last_seen.has_key(node_id):
                 self.node_joined(node_id)
             # update the last seen time
             self.last_seen[node_id] = time.time()
-        # state or message packet
+        
+        # message that a node has left the network
+        elif route[0] == "leave":
+            self._forget_old_nodes(time.time(), [node_id])
+        
+        # packet containing what another client thinks is current state
+        elif route[0] == "hash":
+            # build a list of their state keys (node_id, message_id) 
+            their_state_keys = [tuple(packet[x:x+2]) for x in xrange(0, len(packet), 2)]
+            # find states they don't have, and which are older than 3 ticks
+            for s in self.states:
+                if not tuple(self.states[s][:2]) in their_state_keys and self.states[s][2] + 3 < self.last_tick[0]:
+                    # rebroadcast the state message
+                    self._send_one_to_all("/state" + s, self.states[s])
+                    logging.info("Rebroadcasting state: %s" % self.states[s])
+        
+        # packet updating client state or message
         else:
             # every message should contain a message id
             message_id = self._parse_number_slot(packet)
             # if this is the next in the sequence from this client then increment that counter
-            if not ((self.last_messages.get(node_id, None) is None) or (message_id == self.last_messages[node_id] + 1) or route[0] == "bash-state"):
-                self._drop("Old message", addr, tags, packet_copy, source)
-            else:
-                # log that we have received latest message from this client
-                if message_id > self.last_messages.get(node_id, 0):
-                    self.last_messages[node_id] = message_id
-                # received state update message
-                if len(route) and route[0] == "state" or route[0] == "bash-state":
-                    tick = self._parse_number_slot(packet)
-                    timediff = self._parse_number_slot(packet, coorce=float)
-                    key = "/" + "/".join(route[1:])
-                    # tick, time_offset, value
-                    if not self.states.has_key(key) or self.states[key][2] < tick or (self.states[key][2] == tick and self.states[key][3] < timediff):
-                        self.states[key] = (node_id, message_id, tick, timediff, packet)
-                        # run the state change callback
-                        self.state(node_id, key, *packet)
-                # received regular broadcast message from a node
-                else:
-                    # run the message callback
+            if message_id == self.last_messages.get(node_id, 0) + 1:
+                self.last_messages[node_id] = message_id
+                # run the message callback if this isn't a state message
+                if not len(route) or route[0] != "state":
                     self.message(node_id, "/" + "/".join(route), *packet)
-    
+            # with state messages, we only really care about timestamp - just want the latest
+            if len(route) and route[0] == "state":
+                # when was this state change according to consensus clock
+                tick = self._parse_number_slot(packet)
+                timediff = self._parse_number_slot(packet, coorce=float)
+                # what key the state change is stored on
+                key = "/" + "/".join(route[1:])
+                # tick, time_offset, value
+                if not self.states.has_key(key) or self.states[key][2] < tick or (self.states[key][2] == tick and self.states[key][3] < timediff):
+                    self.states[key] = [node_id, message_id, tick, timediff, packet]
+                    # run the state change callback
+                    self.state(node_id, key, *packet)
+        
     def _send_one_to_all(self, address, message):
         # set up the new OSC message to be sent out
         oscmsg = OSC.OSCMessage()
@@ -274,7 +294,7 @@ class SyncjamsNode:
         for a in ADDRESSES:
             try:
                 return self.sender.sendto(oscmsg, (ADDRESSES[a], self.port))
-            except OSCClientError, e:
+            except OSC.OSCClientError, e:
                 # silently drop socket errors because we'll just keep trying
                 # TODO: log
                 logging.warning("Dropped message send:")
