@@ -26,6 +26,8 @@ NAMESPACE = "/syncjams"
 STORE_MESSAGES = 100
 # how many seconds before we decide a node has left
 NODE_TIMEOUT = 30
+# how long to leave between state updates (throttle fast state changes)
+STATE_THROTTLE_TIME = 0.007
 
 class SyncjamsNode:
     """
@@ -61,6 +63,8 @@ class SyncjamsNode:
         self.sent_queue = []
         # check sum of state that we send to see if all nodes are in agreement (state:client_id, state:msg_id, state:tick)
         self.state_checksums = [0, 0, 0]
+        # queue for outgoing state messages that are being throttled (address -> last_sent_time, message)
+        self.state_throttle_queue = {}
         # set up an osc sender to send out broadcast messages
         self.sender = self._make_sender()
         # set up servers to listen on each broadcast address we want to listen on
@@ -73,10 +77,33 @@ class SyncjamsNode:
             self.set_state(s, initial_state[s])
     
     def set_state(self, address, state=[]):
-        """ Try to set a particular state variable on all nodes. Good for persistent information like song key, controller position, etc. Will always be set to latest update. """
+        """
+            Try to set a particular state variable on all nodes.
+            Good for persistent information like song key, controller position, etc.
+            Nodes will always get most recent state but may not get intermediate states.
+            State updates that happen too fast for the network (e.g. fast fader move) will be throttled to 7ms intervals.
+        """
         if not address.startswith("/"):
             raise SyncjamsException("State address must start with '/'.")
-        self._send("/state" + address, [self.last_tick[0], time.time() - self.last_tick[1]] + (type(state) == list and state or [state]))
+        if not type(state) in [list, tuple, int, float, str]:
+            raise SyncjamsException("State value must be of list, tuple, int, float, or string type.")
+        # get the current time
+        now = time.time()
+        # put together the message we are going to send
+        state_message = [self.last_tick[0], now - self.last_tick[1]] + (type(state) in [list, tuple] and state or [state])
+        # check the state throttle queue to make sure we're not sending to one address too fast
+        state_queue = self.state_throttle_queue.get(address, [0, None])
+        # is the state we are changing on the outgoing queue already?
+        if state_queue[0] + STATE_THROTTLE_TIME > now:
+            # retain the previous send time
+            state_queue[1] = state_message
+            # update the state queue entry for this address instead of sending it now
+            self.state_throttle_queue[address] = state_queue
+        else:
+            # set the last sent time in the throttle queue
+            self.state_throttle_queue[address] = [now, None]
+            # send immediately to the network
+            self._send("/state" + address, state_message)
     
     def get_state(self, address):
         state = self.states.get(address, [None, None, None, None, None])[-1]
@@ -92,6 +119,8 @@ class SyncjamsNode:
     
     def send(self, address, value=[]):
         """ Broadcast an arbitrary message to all nodes. Good for ephemeral rhythm/trigger information. Will always be received in order. """
+        if not type(value) in [list, tuple, int, float, str]:
+            raise SyncjamsException("Message value must be of list, tuple, int, float, or string type.")
         self._send(address, value)
     
     def poll(self):
@@ -157,6 +186,8 @@ class SyncjamsNode:
             self._broadcast_tick()
             # every tick forget about any nodes we haven't seen in a while
             self._forget_old_nodes(now)
+        # check for any states that have been throttled to now be sent
+        self._send_queued_states(now)
     
     def _forget_old_nodes(self, now, forget=[]):
             # find nodes we have not hear from for more than timeout
@@ -201,6 +232,18 @@ class SyncjamsNode:
         # broadcast what we think the current state map is - (node_id, msg_id) pairs are unique
         self._send_one_to_all("/state-hash", [self.node_id] + sum([self.states[s][:2] for s in self.states], []))
     
+    def _send_queued_states(self, now):
+        # make a copy because we might happen in a thread
+        throttle_queue = self.state_throttle_queue.copy()
+        for s in throttle_queue:
+            state_queue = throttle_queue[s][:]
+            # is the state we are changing on the outgoing queue already?
+            if state_queue[1] and state_queue[0] + STATE_THROTTLE_TIME < now:
+                # set the last sent time in the throttle queue
+                self.state_throttle_queue[s] = [now, None]
+                # send immediately to the network
+                self._send("/state" + s, state_queue[1])
+    
     def _send(self, address, message=[]):
         if not address.startswith("/"):
             raise SyncjamsException("Address must start with '/'.")
@@ -212,7 +255,7 @@ class SyncjamsNode:
         outgoing.append(self.node_id)
         outgoing.append(self.message_id)
         # add whatever other data the user wants to send
-        if type(message) == list:
+        if type(message) in [list, tuple]:
             for m in message:
                 outgoing.append(m)
         else:
