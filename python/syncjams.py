@@ -69,34 +69,36 @@ class SyncjamsNode:
         for s in initial_state:
             self.set_state(s, initial_state[s])
     
-    def set_state(self, address, message=[]):
-        """ Try to set a particular state variable on all nodes. """
+    def set_state(self, address, state=[]):
+        """ Try to set a particular state variable on all nodes. Good for persistent information like song key, controller position, etc. Will always be set to latest update. """
         if not address.startswith("/"):
             raise SyncjamsException("State address must start with '/'.")
-        self._send("/state" + address, [self.last_tick[0], time.time() - self.last_tick[1]] + (type(message) == list and message or [message]))
+        self._send("/state" + address, [self.last_tick[0], time.time() - self.last_tick[1]] + (type(state) == list and state or [state]))
     
     def get_state(self, address):
         state = self.states.get(address, [None, None, None, None, None])[-1]
         return len(state) == 1 and state[0] or state
     
     def get_node_id(self):
+        """ Returns this node's unique ID. """
         return self.node_id
     
     def get_node_list(self):
-        return self.last_messages.keys()
+        """ Returns a list of all known nodes currently connected to the group. """
+        return self.last_seen.keys()
     
     def send(self, address, value=[]):
-        """ Broadcast an arbitrary message to all nodes. """
+        """ Broadcast an arbitrary message to all nodes. Good for ephemeral rhythm/trigger information. Will always be received in order. """
         self._send(address, value)
     
     def poll(self):
-        """ Run the SyncJams inner loop once, processing network messages etc. """
+        """ Run the SyncJams inner loop once, processing network messages etc. Good to call once for every frame of audio data processed. """
         for s in self.listeners:
             s.handle_request()
         self._process_tick()
     
     def serve_forever(self):
-        """ Set up a loop running the poll() forever. Good to call inside a Thread. """
+        """ Set up a loop running the poll() method until close() is called. Good to call inside a Thread. """
         self.running = True
         while self.running:
             self.poll()
@@ -112,18 +114,27 @@ class SyncjamsNode:
     ### Methods to override. ###
     
     def tick(self, tick, time):
+        """ A network-consensus metronome tick. """
         pass
     
+    def audio_tick(self, tick):
+        """ Tick that has been compensated for latency. """
+        pass
+        
     def message(self, node_id, address, *args):
+        """ A message that has been broadcast by a node. """
         pass
     
     def state(self, node_id, address, *args):
+        """ A state variable that has been set by a node. """
         pass
     
     def node_joined(self, node_id):
+        """ This node has seen another node for the first time. """
         pass
     
     def node_left(self, node_id):
+        """ A node has left the group or timed out. """
         pass
     
     ### Private methods. ###
