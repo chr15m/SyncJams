@@ -1,12 +1,12 @@
-#N canvas 530 159 450 300 10;
+#N canvas 529 154 450 300 10;
 #X text 13 9 throttles a stream of floats such as those from a fader
 GUI back to a speed that is appropriate for sending over the network.
 there is a loss of information but not at the start or end of the fader
 change.;
 #X obj 18 78 hsl 128 15 0 127 0 0 empty empty empty -2 -8 0 10 -262144
--1 -1 8800 1;
+-1 -1 4000 1;
 #X obj 18 128 hsl 128 15 0 127 0 0 empty empty empty -2 -8 0 10 -262144
--1 -1 8800 1;
-#X obj 15 102 throttle-floatstream 200;
+-1 -1 4000 1;
+#X obj 15 102 throttle-net-bound 200;
 #X connect 1 0 3 0;
 #X connect 3 0 2 0;
