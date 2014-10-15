@@ -33,7 +33,7 @@ class SyncjamsNode:
     """
         Network synchronised metronome and state for jamming with music applications.
     """
-    def __init__(self, latency_ms=0, initial_state={}, namespace=NAMESPACE, port=None, loglevel=logging.ERROR, logfile=None):
+    def __init__(self, initial_state={}, namespace=NAMESPACE, port=None, loglevel=logging.ERROR, logfile=None):
         # set up basic logging
         logging_config = {"level": loglevel}
         if logfile:
@@ -42,7 +42,6 @@ class SyncjamsNode:
         # basic configuration to separate this network singleton from another
         self.port = port or PORT
         self.namespace = namespace
-        self.latency_ms = latency_ms
         # my randomly chosen NodeID
         # (2^23-1 can be represented completely in 32-bit floating point, which some platforms require)
         # about one in eight million chance of collision
@@ -149,10 +148,6 @@ class SyncjamsNode:
         """ A network-consensus metronome tick. """
         pass
     
-    def audio_tick(self, tick):
-        """ Metronome tick that has been compensated for latency (usually occurs earlier than logical tick() method). """
-        pass
-        
     def message(self, node_id, address, *args):
         """ A message that has been broadcast by a node. """
         pass
@@ -344,10 +339,10 @@ class SyncjamsNode:
             if not self.last_messages.has_key(node_id) or message_id == self.last_messages.get(node_id, 0) + 1:
                 self.last_messages[node_id] = message_id
                 # run the message callback if this isn't a state message
-                if not len(route) or route[0] != "state":
+                if route[0] != "state":
                     self.message(node_id, "/" + "/".join(route), *packet)
             # with state messages, we only really care about timestamp - just want the latest
-            if len(route) and route[0] == "state":
+            if route[0] == "state":
                 # when was this state change according to consensus clock
                 tick = self._parse_number_slot(packet)
                 timediff = self._parse_number_slot(packet, convert=float)
