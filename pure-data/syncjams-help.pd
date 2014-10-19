@@ -1,0 +1,50 @@
+#N canvas 226 295 510 645 10;
+#X msg 36 129 set-state /BPM 145;
+#X msg 47 154 set-state /foo/bar mystuff goes here 3.14 12;
+#X msg 57 220 send /to/you a bunch of 123 data;
+#X obj 303 607 text define -k my-initial-state;
+#A set /drumbeat/length 8 \; /drumbeat/sequence 1 0 1 2 0 0 0 1 \;
+;
+#X obj 36 430 route tick node-id node-list joined left message state
+;
+#X floatatom 36 452 7 0 0 0 tick - -, f 7;
+#X text 36 10 network-syncronised metronome \, state dictionary \,
+and data transport for easy collaboration and jamming with electronic
+music software;
+#X floatatom 81 472 7 0 0 0 node-id - -, f 7;
+#X obj 36 408 syncjams bpm=180 initial=my-initial-state namespace=syncjams
+port=23232, f 71;
+#X obj 173 526 print node joined;
+#X obj 219 501 print node left;
+#X obj 127 550 print node list;
+#X msg 96 275 get-node-id;
+#X msg 96 331 get-node-list;
+#X msg 283 322 get-state /foo/bar;
+#X msg 283 347 get-state /BPM;
+#X text 282 276 get a network-agreed state previously set by us or
+somet other node, f 24;
+#X text 94 255 get our node id;
+#X text 95 299 get the list of connected node ids, f 19;
+#X text 13 608 initial states to be set in our state table ->;
+#X obj 265 478 print got message;
+#X obj 311 455 print got state update;
+#X text 36 81 ask the network to set the value of a particular key/address.
+/BPM is a special key \, the value of which is used for the BPM of
+the metronome.;
+#X text 55 176 send a one-shot ephemeral message to the network (received
+in order), f 33;
+#X connect 0 0 8 0;
+#X connect 1 0 8 0;
+#X connect 2 0 8 0;
+#X connect 4 0 5 0;
+#X connect 4 1 7 0;
+#X connect 4 2 11 0;
+#X connect 4 3 9 0;
+#X connect 4 4 10 0;
+#X connect 4 5 20 0;
+#X connect 4 6 21 0;
+#X connect 8 0 4 0;
+#X connect 12 0 8 0;
+#X connect 13 0 8 0;
+#X connect 14 0 8 0;
+#X connect 15 0 8 0;
