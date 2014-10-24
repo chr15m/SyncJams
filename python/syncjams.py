@@ -28,6 +28,8 @@ STORE_MESSAGES = 100
 NODE_TIMEOUT = 30
 # how long to leave between state updates (throttle fast state changes)
 STATE_THROTTLE_TIME = 0.007
+# name of the checksum algorithm we are using
+CHECKSUM = "djb3"
 
 class SyncjamsNode:
     """
@@ -60,8 +62,8 @@ class SyncjamsNode:
         self.last_tick = (0, time.time())
         # queue of non-tick messages we have sent
         self.sent_queue = []
-        # check sum of state that we send to see if all nodes are in agreement (state:client_id, state:msg_id, state:tick)
-        self.state_checksums = [0, 0, 0]
+        # check sum of state that we send to see if all nodes are in agreement (checksum_name, state:client_id, state:msg_id, state:tick)
+        self.state_checksums = [CHECKSUM, 0, 0, 0]
         # queue for outgoing state messages that are being throttled (address -> last_sent_time, message)
         self.state_throttle_queue = {}
         # set up an osc sender to send out broadcast messages
@@ -205,7 +207,7 @@ class SyncjamsNode:
     def _update_state_checksums(self):
             # for the first three elements of each state (node_id, msg_id, tick)
             # generate a checksum based on the sorted list of those values
-            state_checksums = []
+            state_checksums = [CHECKSUM]
             for x in range(3):
                 sum_source = sorted([self.states[s][x] for s in self.states])
                 state_checksums.append(self._array_checksum(sum_source))
@@ -223,9 +225,9 @@ class SyncjamsNode:
             sum([[m, self.last_messages[m]] for m in self.last_messages], [])
         )
     
-    def _broadcast_state_hash(self):
+    def _broadcast_state_ids(self):
         # broadcast what we think the current state map is - (node_id, msg_id) pairs are unique
-        self._send_one_to_all("/state-hash", [self.node_id] + sum([self.states[s][:2] for s in self.states], []))
+        self._send_one_to_all("/state-ids", [self.node_id] + sum([self.states[s][:2] for s in self.states], []))
     
     def _send_queued_states(self, now):
         # make a copy because we might happen in a thread
@@ -299,13 +301,15 @@ class SyncjamsNode:
                 # send out our new tick anyway so everyone learns our last_message list
                 self._broadcast_tick()
             # remainder of the tick message is their state checksums and then last node message ids
-            state_checksums = packet[:3]
-            message_ids = packet[3:]
-            # compare their state checksums to our own
-            if state_checksums != self.state_checksums:
-                logging.debug("State checksums don't match, broadcasting state hash.");
-                # if we disagree about global state, broadcast what we think global state is
-                self._broadcast_state_hash()
+            state_checksums = packet[:4]
+            message_ids = packet[4:]
+            # if they are using the same state checksumming algorithm we can check their state
+            if state_checksums[0] == self.state_checksums[0]:
+                # compare their state checksums to our own
+                if state_checksums != self.state_checksums:
+                    logging.debug("State checksums don't match, broadcasting state hash.");
+                    # if we disagree about global state, broadcast what we think global state is
+                    self._broadcast_state_ids()
             # build a dictionary of their known nodes and latest message ids
             their_latest_messages = dict([(message_ids[x*2], message_ids[x*2+1]) for x in range(len(message_ids) / 2)])
             # send through the messages from me that they are missing message_id, address, message
@@ -321,8 +325,8 @@ class SyncjamsNode:
             self._forget_old_nodes(time.time(), [node_id])
         
         # packet containing what another client thinks is current state
-        elif route[0] == "state-hash":
-            # build a list of their state keys (node_id, message_id) 
+        elif route[0] == "state-ids":
+            # build a list of their state unique id keys (node_id, message_id) 
             their_state_keys = [tuple(packet[x:x+2]) for x in xrange(0, len(packet), 2)]
             # find states they don't have, and which are older than 3 ticks
             for s in self.states:
@@ -377,13 +381,24 @@ class SyncjamsNode:
     ### Utility methods. ###
     
     def _array_checksum(self, values):
-        # hacked version of djb2 hash
-        # works up to pow(2, 23) for systems where everything is floating point
-        # test:
-        # s._array_checksum([12, 432, 3, 0, 2343]) == 7987
-        # s._array_checksum([0.223, 4234, 0.242435, .76653, 3, 23.35, 656, 43]) == 62475
-        # s._array_checksum([122112, 4321, 123, 11, 14, 4, 43, 8388606, 3, 432, 545]) == 54865
-        h = 1
+        # takes a sorted array of numbers and computes a simple checksum
+        #
+        # hacked version of djb2 hash - well actually not djb2 but:
+        # "another version of this algorithm [djb2] (now favored by bernstein)"
+        # http://www.cse.yorku.ca/~oz/hash.html
+        # 
+        # our 32bit clamping hack works for inputs up to pow(2, 23) - good for systems where everything is floating point
+        # 
+        # Reasons this weak checksum is probably ok to use in this protocol:
+        # * Most of the time, states will be changing often (controller data) so the checksums will change often and collisions won't last long.
+        # * We are checksumming three different pieces of data so a simultaneous collision on all three is much less likely.
+        # * This checksum is very fast, and very simple to implement across varied platforms.
+        #
+        # test values:
+        # s._array_checksum([12, 432, 3, 0, 2343]) == 28632
+        # s._array_checksum([0.223, 4234, 0.242435, .76653, 3, 23.35, 656, 43]) == 37187
+        # s._array_checksum([122112, 4321, 123, 11, 14, 4, 43, 8388606, 3, 432, 545]) == 36600
+        h = 5381
         for v in values:
             h = ((int(int(33 * h) % 65535) ^ int(v % 65535)) % 65535)
         return h
