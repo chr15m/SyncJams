@@ -28,8 +28,8 @@ STORE_MESSAGES = 100
 NODE_TIMEOUT = 30
 # how long to leave between state updates (throttle fast state changes)
 STATE_THROTTLE_TIME = 0.007
-# name of the checksum algorithm we are using
-CHECKSUM = "djb3"
+# syncjams protocol information
+PROTOCOL_VERSION = "v1"
 
 class SyncjamsNode:
     """
@@ -63,7 +63,7 @@ class SyncjamsNode:
         # queue of non-tick messages we have sent
         self.sent_queue = []
         # check sum of state that we send to see if all nodes are in agreement (checksum_name, state:client_id, state:msg_id, state:tick)
-        self.state_checksums = [CHECKSUM, 0, 0, 0]
+        self.state_checksums = [0, 0, 0]
         # queue for outgoing state messages that are being throttled (address -> last_sent_time, message)
         self.state_throttle_queue = {}
         # set up an osc sender to send out broadcast messages
@@ -207,7 +207,7 @@ class SyncjamsNode:
     def _update_state_checksums(self):
             # for the first three elements of each state (node_id, msg_id, tick)
             # generate a checksum based on the sorted list of those values
-            state_checksums = [CHECKSUM]
+            state_checksums = []
             for x in range(3):
                 sum_source = sorted([self.states[s][x] for s in self.states])
                 state_checksums.append(self._array_checksum(sum_source))
@@ -273,6 +273,12 @@ class SyncjamsNode:
             self.drop("Bad namespace", addr, tags, packet, source)
             return
         
+        # bail if we don't know the version of syncjams
+        version = packet.pop(0)
+        if version != PROTOCOL_VERSION:
+            self._drop("Wrong protocol version", addr, tags, packet, source)
+            return
+        
         # every message should contain the other client's id
         node_id = self._parse_number_slot(packet)
         # bail if there wasn't a valid client id
@@ -301,8 +307,8 @@ class SyncjamsNode:
                 # send out our new tick anyway so everyone learns our last_message list
                 self._broadcast_tick()
             # remainder of the tick message is their state checksums and then last node message ids
-            state_checksums = packet[:4]
-            message_ids = packet[4:]
+            state_checksums = packet[:3]
+            message_ids = packet[3:]
             # if they are using the same state checksumming algorithm we can check their state
             if state_checksums[0] == self.state_checksums[0]:
                 # compare their state checksums to our own
@@ -364,6 +370,8 @@ class SyncjamsNode:
         # set up the new OSC message to be sent out
         oscmsg = OSC.OSCMessage()
         oscmsg.setAddress(self.namespace + address)
+        # add the version number first
+        oscmsg.append(PROTOCOL_VERSION)
         # add the message parts to it
         [oscmsg.append(m) for m in message]
         logging.debug("raw sent packet %s" % (oscmsg,))
