@@ -1,4 +1,4 @@
-#N canvas 449 1141 510 645 10;
+#N canvas 117 198 510 645 10;
 #X msg 47 154 set-state /foo/bar mystuff goes here 3.14 12;
 #X msg 57 220 send /to/you a bunch of 123 data;
 #X obj 303 618 text define -k my-initial-state;
@@ -34,6 +34,7 @@ the metronome.;
 in order), f 33;
 #X msg 36 129 set-state /BPM 145;
 #X obj 81 590 print node-id;
+#X msg 283 370 get-state /key/0;
 #X connect 0 0 7 0;
 #X connect 1 0 7 0;
 #X connect 3 0 4 0;
@@ -50,3 +51,4 @@ in order), f 33;
 #X connect 13 0 7 0;
 #X connect 14 0 7 0;
 #X connect 23 0 7 0;
+#X connect 25 0 7 0;

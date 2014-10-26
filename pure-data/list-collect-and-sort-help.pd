@@ -1,0 +1,17 @@
+#N canvas 683 337 450 300 10;
+#X obj 16 86 list-collect-and-sort;
+#X obj 16 108 list prepend set;
+#X obj 16 130 list trim;
+#X msg 16 152 12 54 130 148 164 256 297 302 466 567 675 774 793 858
+894 902 931;
+#X msg 139 17 bang;
+#X obj 16 43 random 1000;
+#X msg 16 17 bang;
+#X floatatom 16 65 5 0 0 0 - - -, f 5;
+#X connect 0 0 1 0;
+#X connect 1 0 2 0;
+#X connect 2 0 3 0;
+#X connect 4 0 0 1;
+#X connect 5 0 7 0;
+#X connect 6 0 5 0;
+#X connect 7 0 0 0;
