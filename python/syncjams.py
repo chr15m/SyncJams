@@ -88,6 +88,8 @@ class SyncjamsNode:
             raise SyncjamsException("State address must start with '/'.")
         if not type(state) in [list, tuple, int, float, str]:
             raise SyncjamsException("State value must be of list, tuple, int, float, or string type.")
+        if type(state) in [list, tuple] and len([s for s in state if s is None]):
+            raise SyncjamsException("State values must not be None.");
         # get the current time
         now = time.time()
         # put together the message we are going to send
@@ -122,6 +124,8 @@ class SyncjamsNode:
         """ Broadcast an arbitrary message to all nodes. Good for ephemeral rhythm/trigger information. Will always be received in order. """
         if not type(value) in [list, tuple, int, float, str]:
             raise SyncjamsException("Message value must be of list, tuple, int, float, or string type.")
+        if type(value) in [list, tuple] and len([v for v in value if v is None]):
+            raise SyncjamsException("Message value must not contain None.");
         self._send(address, value)
     
     def poll(self):
