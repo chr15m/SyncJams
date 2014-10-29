@@ -1,10 +1,8 @@
-#N canvas 107 62 510 645 10;
+#N canvas 106 57 510 660 10;
 #X msg 47 154 set-state /foo/bar mystuff goes here 3.14 12;
 #X msg 57 220 send /to/you a bunch of 123 data;
 #X obj 303 618 text define -k my-initial-state;
 #A set /drumbeat/length 8 \; /drumbeat/sequence 1 0 1 2 0 0 0 1 \;
-;
-#X obj 36 460 route tick node-id node-list joined left message state
 ;
 #X floatatom 36 482 7 0 0 0 tick - -, f 7;
 #X text 36 10 network-syncronised metronome \, state dictionary \,
@@ -13,9 +11,9 @@ music software;
 #X floatatom 81 502 7 0 0 0 node-id - -, f 7;
 #X obj 36 418 syncjams bpm=180 initial=my-initial-state namespace=syncjams
 port=23232, f 71;
-#X obj 173 548 print node joined;
-#X obj 219 527 print node left;
-#X obj 127 569 print node list;
+#X obj 173 556 print node joined;
+#X obj 219 535 print node left;
+#X obj 127 577 print node list;
 #X msg 96 275 get-node-id;
 #X msg 96 331 get-node-list;
 #X msg 283 322 get-state /foo/bar;
@@ -25,30 +23,34 @@ somet other node, f 24;
 #X text 94 255 get our node id;
 #X text 95 299 get the list of connected node ids, f 19;
 #X text 13 619 initial states to be set in our state table ->;
-#X obj 265 506 print got message;
-#X obj 311 485 print got state update;
+#X obj 265 514 print got message;
+#X obj 311 493 print got state update;
 #X text 36 81 ask the network to set the value of a particular key/address.
 /BPM is a special key \, the value of which is used for the BPM of
 the metronome.;
 #X text 55 176 send a one-shot ephemeral message to the network (received
 in order), f 33;
 #X msg 36 129 set-state /BPM 145;
-#X obj 81 590 print node-id;
+#X obj 81 598 print node-id;
 #X msg 283 370 get-state /key/0;
-#X connect 0 0 7 0;
-#X connect 1 0 7 0;
-#X connect 3 0 4 0;
-#X connect 3 1 6 0;
-#X connect 3 2 10 0;
-#X connect 3 3 8 0;
-#X connect 3 4 9 0;
-#X connect 3 5 19 0;
-#X connect 3 6 20 0;
-#X connect 6 0 24 0;
-#X connect 7 0 3 0;
-#X connect 11 0 7 0;
-#X connect 12 0 7 0;
-#X connect 13 0 7 0;
-#X connect 14 0 7 0;
-#X connect 23 0 7 0;
-#X connect 25 0 7 0;
+#X obj 385 472 print init event;
+#X obj 36 450 route tick node-id node-list joined left message state
+init-event, f 67;
+#X connect 0 0 6 0;
+#X connect 1 0 6 0;
+#X connect 5 0 23 0;
+#X connect 6 0 26 0;
+#X connect 10 0 6 0;
+#X connect 11 0 6 0;
+#X connect 12 0 6 0;
+#X connect 13 0 6 0;
+#X connect 22 0 6 0;
+#X connect 24 0 6 0;
+#X connect 26 0 3 0;
+#X connect 26 1 5 0;
+#X connect 26 2 9 0;
+#X connect 26 3 7 0;
+#X connect 26 4 8 0;
+#X connect 26 5 18 0;
+#X connect 26 6 19 0;
+#X connect 26 7 25 0;
