@@ -1,4 +1,4 @@
-#N canvas 115 188 510 645 10;
+#N canvas 107 62 510 645 10;
 #X msg 47 154 set-state /foo/bar mystuff goes here 3.14 12;
 #X msg 57 220 send /to/you a bunch of 123 data;
 #X obj 303 618 text define -k my-initial-state;
