@@ -16,6 +16,7 @@ ANY = '0.0.0.0'
 ADDRESSES = {
     "broadcast": '<broadcast>',
     "android": '192.168.42.255',
+    "localhost": '127.0.0.1'
     # "multicast": '239.255.232.32',
 }
 
