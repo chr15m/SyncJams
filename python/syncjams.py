@@ -192,7 +192,7 @@ class SyncjamsNode:
         self._send_queued_states(now)
     
     def _forget_old_nodes(self, now, forget=[]):
-            # find nodes we have not hear from for more than timeout
+            # find nodes we have not heard from for more than timeout
             forget = forget + [node_id for node_id in self.last_seen if (self.last_seen[node_id] + NODE_TIMEOUT < now)]
             if forget:
                 logging.info("forgetting nodes %s" % forget)
@@ -202,10 +202,6 @@ class SyncjamsNode:
                 del self.last_seen[node_id]
                 if self.last_messages.has_key(node_id):
                     del self.last_messages[node_id]
-                # make sure the node is not listed as initiator of any states
-                for s in self.states:
-                    if self.states[s][0] == node_id:
-                        self.states[s][0] == -1
                 # run the node_left callback method
                 self.node_left(node_id)
     
