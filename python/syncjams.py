@@ -310,13 +310,11 @@ class SyncjamsNode:
             # remainder of the tick message is their state checksums and then last node message ids
             state_checksums = packet[:3]
             message_ids = packet[3:]
-            # if they are using the same state checksumming algorithm we can check their state
-            if state_checksums[0] == self.state_checksums[0]:
-                # compare their state checksums to our own
-                if state_checksums != self.state_checksums:
-                    logging.debug("State checksums don't match, broadcasting state hash.");
-                    # if we disagree about global state, broadcast what we think global state is
-                    self._broadcast_state_ids()
+            # compare their state checksums to our own
+            if state_checksums != self.state_checksums:
+                logging.debug("State checksums don't match, broadcasting state hash.");
+                # if we disagree about global state, broadcast what we think global state is
+                self._broadcast_state_ids()
             # build a dictionary of their known nodes and latest message ids
             their_latest_messages = dict([(message_ids[x*2], message_ids[x*2+1]) for x in range(len(message_ids) / 2)])
             # send through the messages from me that they are missing message_id, address, message
