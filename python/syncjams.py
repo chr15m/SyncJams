@@ -338,7 +338,7 @@ class SyncjamsNode:
                 if not tuple(self.states[s][:2]) in their_state_keys and self.states[s][2] + 3 < self.last_tick[0]:
                     # rebroadcast the state message
                     self._send_one_to_all("/state" + s, self.states[s])
-                    logging.info("Rebroadcasting state: %s" % self.states[s])
+                    logging.info("Rebroadcasting state: %s = %s" % (s, self.states[s]))
         
         # packet updating client state or message
         else:
