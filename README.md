@@ -12,7 +12,7 @@ Three types of data are shared between nodes:
 
 ## Protocol ##
 
-SyncJams communicates in the OSC protocol on port 23232 over broadcast UDP packets. For more information and protocol details see <./doc/protocol.md>.
+SyncJams communicates in the OSC protocol on port 23232 over broadcast UDP packets. For more information and protocol details see [protocol.md](doc/protocol.md).
 
 ## Implementations and Platforms ##
 
@@ -82,7 +82,7 @@ You can store several different chord/key entries at different indexes, for exam
  * /key/0 "chord" "maj7" 61
  * /key/1 "frequencies" "gamelan-slendro-1" 262 299 344 398 458 524
 
-See the file <./doc/chords.md> for a list of western music chord names and their corresponding notes to use (Taken from Benjamin K. Shisler's "Dictionary of Intervals and Chords").
+See the file [chords.md](doc/chords.md) for a list of western music chord names and their corresponding notes to use (Taken from Benjamin K. Shisler's "Dictionary of Intervals and Chords").
 
 An algorithm for converting midi notes to frequencies ("mtof") taken from Pure Data is here:
 
