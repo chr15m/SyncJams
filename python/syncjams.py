@@ -312,7 +312,7 @@ class SyncjamsNode:
             message_ids = packet[3:]
             # compare their state checksums to our own
             if state_checksums != self.state_checksums:
-                logging.debug("State checksums don't match, broadcasting state hash.");
+                logging.info("State checksums don't match, broadcasting state hash.");
                 # if we disagree about global state, broadcast what we think global state is
                 self._broadcast_state_ids()
             # build a dictionary of their known nodes and latest message ids
