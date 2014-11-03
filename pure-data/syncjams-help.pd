@@ -1,16 +1,11 @@
-#N canvas 106 57 510 660 10;
+#N canvas 104 48 510 660 10;
 #X msg 47 154 set-state /foo/bar mystuff goes here 3.14 12;
 #X msg 57 220 send /to/you a bunch of 123 data;
-#X obj 303 618 text define -k my-initial-state;
-#A set /drumbeat/length 8 \; /drumbeat/sequence 1 0 1 2 0 0 0 1 \;
-;
 #X floatatom 36 482 7 0 0 0 tick - -, f 7;
 #X text 36 10 network-syncronised metronome \, state dictionary \,
 and data transport for easy collaboration and jamming with electronic
 music software;
 #X floatatom 81 502 7 0 0 0 node-id - -, f 7;
-#X obj 36 418 syncjams bpm=180 initial=my-initial-state namespace=syncjams
-port=23232, f 71;
 #X obj 173 556 print node joined;
 #X obj 219 535 print node left;
 #X obj 127 577 print node list;
@@ -22,7 +17,6 @@ port=23232, f 71;
 somet other node, f 24;
 #X text 94 255 get our node id;
 #X text 95 299 get the list of connected node ids, f 19;
-#X text 13 619 initial states to be set in our state table ->;
 #X obj 265 514 print got message;
 #X obj 311 493 print got state update;
 #X text 36 81 ask the network to set the value of a particular key/address.
@@ -36,21 +30,22 @@ in order), f 33;
 #X obj 385 472 print init event;
 #X obj 36 450 route tick node-id node-list joined left message state
 init-event, f 67;
-#X connect 0 0 6 0;
-#X connect 1 0 6 0;
-#X connect 5 0 23 0;
-#X connect 6 0 26 0;
-#X connect 10 0 6 0;
-#X connect 11 0 6 0;
-#X connect 12 0 6 0;
-#X connect 13 0 6 0;
-#X connect 22 0 6 0;
-#X connect 24 0 6 0;
-#X connect 26 0 3 0;
-#X connect 26 1 5 0;
-#X connect 26 2 9 0;
-#X connect 26 3 7 0;
-#X connect 26 4 8 0;
-#X connect 26 5 18 0;
-#X connect 26 6 19 0;
-#X connect 26 7 25 0;
+#X obj 36 418 syncjams bpm=180 namespace=syncjams port=23232;
+#X connect 0 0 24 0;
+#X connect 1 0 24 0;
+#X connect 4 0 20 0;
+#X connect 8 0 24 0;
+#X connect 9 0 24 0;
+#X connect 10 0 24 0;
+#X connect 11 0 24 0;
+#X connect 19 0 24 0;
+#X connect 21 0 24 0;
+#X connect 23 0 2 0;
+#X connect 23 1 4 0;
+#X connect 23 2 7 0;
+#X connect 23 3 5 0;
+#X connect 23 4 6 0;
+#X connect 23 5 15 0;
+#X connect 23 6 16 0;
+#X connect 23 7 22 0;
+#X connect 24 0 23 0;
