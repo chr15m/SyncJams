@@ -1,4 +1,4 @@
-#N canvas 258 75 510 660 10;
+#N canvas 257 70 510 660 10;
 #X msg 47 154 set-state /foo/bar mystuff goes here 3.14 12;
 #X msg 57 220 send /to/you a bunch of 123 data;
 #X floatatom 36 482 7 0 0 0 tick - -, f 7;
@@ -6,9 +6,9 @@
 and data transport for easy collaboration and jamming with electronic
 music software;
 #X floatatom 85 502 7 0 0 0 node-id - -, f 7;
-#X obj 173 556 print node joined;
-#X obj 219 535 print node left;
-#X obj 127 577 print node list;
+#X obj 185 556 print node joined;
+#X obj 235 535 print node left;
+#X obj 135 577 print node list;
 #X msg 96 275 get-node-id;
 #X msg 96 331 get-node-list;
 #X msg 283 322 get-state /foo/bar;
@@ -17,8 +17,8 @@ music software;
 somet other node, f 24;
 #X text 94 255 get our node id;
 #X text 95 299 get the list of connected node ids, f 19;
-#X obj 265 514 print got message;
-#X obj 311 493 print got state update;
+#X obj 285 514 print got message;
+#X obj 335 493 print got state update;
 #X text 36 81 ask the network to set the value of a particular key/address.
 /BPM is a special key \, the value of which is used for the BPM of
 the metronome.;
