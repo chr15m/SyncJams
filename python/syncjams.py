@@ -314,7 +314,7 @@ class SyncjamsNode:
             # build a dictionary of their known nodes and latest message ids
             their_latest_messages = dict([(message_ids[x*2], message_ids[x*2+1]) for x in range(len(message_ids) / 2)])
             # if this node does not know us yet and we have messages on our outgoing queue
-            if their_latest_messages.has_key(self.node_id) and self.sent_queue:
+            if not their_latest_messages.has_key(self.node_id) and self.sent_queue:
                 # just send them the last item on our queue
                 self._send_one_to_all(self.sent_queue[-1][1], self.sent_queue[-1][2])
             else:
