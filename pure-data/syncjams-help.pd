@@ -1,4 +1,4 @@
-#N canvas 257 70 510 660 10;
+#N canvas 400 99 510 660 10;
 #X msg 47 154 set-state /foo/bar mystuff goes here 3.14 12;
 #X msg 57 220 send /to/you a bunch of 123 data;
 #X floatatom 36 482 7 0 0 0 tick - -, f 7;
