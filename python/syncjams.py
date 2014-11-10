@@ -5,8 +5,9 @@
 
 import socket
 import time
-from random import randint
+import sys
 import logging
+from random import randint
 
 import OSC
 
@@ -310,15 +311,20 @@ class SyncjamsNode:
             # remainder of the tick message is their state checksums and then last node message ids
             state_checksums = packet[:3]
             message_ids = packet[3:]
+            # build a dictionary of their known nodes and latest message ids
+            their_latest_messages = dict([(message_ids[x*2], message_ids[x*2+1]) for x in range(len(message_ids) / 2)])
+            # if this node does not know us yet and we have messages on our outgoing queue
+            if their_latest_messages.has_key(self.node_id) and self.sent_queue:
+                # just send them the last item on our queue
+                self._send_one_to_all(self.sent_queue[-1][1], self.sent_queue[-1][2])
+            else:
+                # otherwise send through all messages from me that they are missing message_id, address, message
+                [self._send_one_to_all(m[1], m[2]) for m in self.sent_queue if m[0] > their_latest_messages.get(self.node_id, 0)]
             # compare their state checksums to our own
             if state_checksums != self.state_checksums:
                 logging.info("State checksums don't match, broadcasting state hash.");
                 # if we disagree about global state, broadcast what we think global state is
                 self._broadcast_state_ids()
-            # build a dictionary of their known nodes and latest message ids
-            their_latest_messages = dict([(message_ids[x*2], message_ids[x*2+1]) for x in range(len(message_ids) / 2)])
-            # send through the messages from me that they are missing message_id, address, message
-            [self._send_one_to_all(m[1], m[2]) for m in self.sent_queue if m[0] > their_latest_messages.get(self.node_id, 0)]
             # if this is the first time we have seen this node then run the callback method
             if not self.last_seen.has_key(node_id):
                 self.node_joined(node_id)
@@ -344,8 +350,11 @@ class SyncjamsNode:
         else:
             # every message should contain a message id
             message_id = self._parse_number_slot(packet)
-            # if this is the next in the sequence from this client then increment that counter
-            if not self.last_messages.has_key(node_id) or message_id == self.last_messages.get(node_id, 0) + 1:
+            # if we've never seen this node before (or haven't seen them for ages) treat the message as message-counter-reset
+            if not self.last_messages.has_key(node_id) or message_id < self.last_messages.get(node_id, sys.maxint) - STORE_MESSAGES:
+                self.last_messages[node_id] = message_id
+            # otherwise if this is the next in the sequence from this client then increment that counter
+            elif message_id == self.last_messages.get(node_id, 0) + 1:
                 self.last_messages[node_id] = message_id
                 # run the message callback if this isn't a state message
                 if route[0] != "state":
