@@ -1,4 +1,4 @@
-#N canvas 400 99 510 660 10;
+#N canvas 72 102 510 660 10;
 #X msg 47 154 set-state /foo/bar mystuff goes here 3.14 12;
 #X msg 57 220 send /to/you a bunch of 123 data;
 #X floatatom 36 482 7 0 0 0 tick - -, f 7;
@@ -31,6 +31,9 @@ in order), f 33;
 #X obj 36 450 route tick node-id node-list joined left message state
 init-event, f 67;
 #X obj 36 418 syncjams bpm=180 namespace=syncjams port=23232;
+#X msg 328 221 set-state /myslider \$1;
+#X obj 331 199 hsl 128 15 0 127 0 0 empty empty empty -2 -8 0 10 -262144
+-1 -1 4100 0;
 #X connect 0 0 24 0;
 #X connect 1 0 24 0;
 #X connect 4 0 20 0;
@@ -49,3 +52,5 @@ init-event, f 67;
 #X connect 23 6 16 0;
 #X connect 23 7 22 0;
 #X connect 24 0 23 0;
+#X connect 25 0 24 0;
+#X connect 26 0 25 0;
