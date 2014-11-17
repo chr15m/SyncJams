@@ -12,9 +12,15 @@
 #X obj 16 180 map-api \$0/test;
 #X obj 187 94 map-api \$0/test;
 #X obj 16 117 print /test/one;
-#X msg 240 173 each;
-#X obj 240 217 print each;
-#X obj 240 195 map-api \$0/test;
+#X msg 181 218 each;
+#X obj 181 262 print each;
+#X obj 181 240 map-api \$0/test;
+#X obj 330 198 until;
+#X obj 330 220 f;
+#X obj 360 220 + 1;
+#X msg 330 175 1000;
+#X obj 330 264 map-api \$0/test;
+#X msg 330 242 set hello/\$1 \$1;
 #X connect 0 0 5 0;
 #X connect 2 0 8 0;
 #X connect 3 0 9 0;
@@ -24,3 +30,9 @@
 #X connect 9 0 1 0;
 #X connect 13 0 15 0;
 #X connect 15 0 14 0;
+#X connect 16 0 17 0;
+#X connect 17 0 18 0;
+#X connect 17 0 21 0;
+#X connect 18 0 17 1;
+#X connect 19 0 16 0;
+#X connect 21 0 20 0;
