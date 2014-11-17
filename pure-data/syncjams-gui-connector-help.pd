@@ -1,0 +1,19 @@
+#N canvas 85 114 488 300 10;
+#X obj 19 57 hsl 128 15 0 127 0 0 /myslider/1 /myslider/1/r /myslider/1
+-2 -8 0 10 -262144 -1 -1 3500 0;
+#X obj 334 30 route tick;
+#X floatatom 334 52 5 0 0 0 - - -, f 5;
+#X text 16 8 easily share pure-data GUI state via SyncJams;
+#X obj 334 8 syncjams \$0/syncj;
+#X obj 19 97 hsl 128 15 0 127 0 0 /myslider/2 /myslider/2/r /myslider/2
+-2 -8 0 10 -262144 -1 -1 8100 1;
+#X obj 10 210 syncjams-gui-connector \$0/syncj /myslider/1 /myslider/1/r
+;
+#X obj 10 232 syncjams-gui-connector \$0/syncj /myslider/2 /myslider/2/r
+;
+#X obj 19 135 tgl 15 0 /mytoggle/1 /mytoggle/1/r /mytoggle/1 17 7 0
+10 -262144 -1 -1 0 1;
+#X obj 10 254 syncjams-gui-connector \$0/syncj /mytoggle/1 /mytoggle/1/r
+;
+#X connect 1 0 2 0;
+#X connect 4 0 1 0;
