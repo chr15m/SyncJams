@@ -1,0 +1,38 @@
+#N canvas 580 183 615 498 10;
+#X obj 139 141 syncjams-latency-compensator;
+#X floatatom 139 199 7 0 0 0 tick - -, f 7;
+#X floatatom 188 259 7 0 0 0 node-id - -, f 7;
+#X obj 288 273 print node joined;
+#X obj 338 252 print node left;
+#X obj 238 294 print node list;
+#X obj 388 231 print got message;
+#X obj 438 210 print got state update;
+#X msg 139 56 set-state /BPM 145;
+#X obj 188 315 print node-id;
+#X obj 488 189 print init event;
+#X obj 139 167 route tick node-id node-list joined left message state
+init-event, f 67;
+#X obj 139 115 syncjams \$0/syncer \, bpm 180 \, namespace syncjams
+\, port 23232;
+#X text 8 141 compensates ticks ->;
+#X obj 30 216 syncjams;
+#X obj 30 238 route tick;
+#X obj 30 260 s \$0/synctick;
+#X msg 153 84 set-state /BPM 180;
+#X floatatom 139 216 5 0 0 0 - #0/synctick -, f 5;
+#X text 18 10 Compensate for audio latency in SyncJams metronome.;
+#X connect 0 0 11 0;
+#X connect 2 0 9 0;
+#X connect 8 0 12 0;
+#X connect 11 0 1 0;
+#X connect 11 1 2 0;
+#X connect 11 2 5 0;
+#X connect 11 3 3 0;
+#X connect 11 4 4 0;
+#X connect 11 5 6 0;
+#X connect 11 6 7 0;
+#X connect 11 7 10 0;
+#X connect 12 0 0 0;
+#X connect 14 0 15 0;
+#X connect 15 0 16 0;
+#X connect 17 0 12 0;
