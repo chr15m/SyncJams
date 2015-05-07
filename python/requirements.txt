@@ -1,2 +1,1 @@
-pyosc
-distutils
+pyosc==0.3.5b-5294
