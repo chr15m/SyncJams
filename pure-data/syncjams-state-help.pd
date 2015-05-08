@@ -1,0 +1,27 @@
+#N canvas 713 278 409 300 10;
+#X obj 23 177 syncjams-state /BPM;
+#X msg 23 58 set-state /hello foo bar 13;
+#X msg 36 105 set-state /BPM \$1;
+#X obj 23 135 syncjams \$0/sync;
+#X text 17 15 Listen for the updated values of SyncJams state-keys.
+;
+#X floatatom 134 199 5 0 0 0 - - -, f 5;
+#X floatatom 36 84 5 30 300 0 - - -, f 5;
+#X obj 23 219 syncjams-state /hello;
+#X obj 23 241 route tick;
+#X floatatom 23 263 5 0 0 0 - - -, f 5;
+#X obj 146 241 print /hello;
+#X text 152 176 <- listen out for changes to /BPM;
+#X text 231 239 <- listen out for state changes to "/hello" state key.
+, f 24;
+#X text 131 135 <- our SyncJams instance;
+#X text 17 31 args: state-key;
+#X connect 0 0 7 0;
+#X connect 0 1 5 0;
+#X connect 1 0 3 0;
+#X connect 2 0 3 0;
+#X connect 3 0 0 0;
+#X connect 6 0 2 0;
+#X connect 7 0 8 0;
+#X connect 7 1 10 0;
+#X connect 8 0 9 0;
