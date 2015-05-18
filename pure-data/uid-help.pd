@@ -1,22 +1,22 @@
-#N canvas 467 312 450 300 10;
-#X obj 27 158 uid;
+#N canvas 465 302 450 300 10;
 #X msg 27 133 bang;
 #X obj 27 182 nbx 10 14 -1e+37 1e+37 0 0 empty empty empty 0 -8 0 10
--262144 -1 -1 147844 256;
+-262144 -1 -1 5.21578e+06 256;
 #X text 62 158 <- takes 100 milliseconds to settle;
 #X obj 27 111 loadbang;
-#X obj 313 154 uid;
 #X msg 313 129 bang;
 #X obj 313 178 nbx 10 14 -1e+37 1e+37 0 0 empty empty empty 0 -8 0
-10 -262144 -1 -1 522718 256;
+10 -262144 -1 -1 7.05067e+06 256;
 #X obj 313 107 loadbang;
-#X text 24 11 uid uses the network \, microphone \, and startup time
-to create a random ID with a high probability of being different every
-time it is banged or even loadbanged. good for differentiating nodes
-on a network. not a uuid4 replacement but maybe good enough.;
-#X connect 0 0 2 0;
-#X connect 1 0 0 0;
-#X connect 4 0 1 0;
-#X connect 5 0 7 0;
-#X connect 6 0 5 0;
-#X connect 8 0 6 0;
+#X text 24 11 uid uses the network \, and startup time to create a
+random ID with a high probability of being different every time it
+is banged or even loadbanged. good for differentiating nodes on a network.
+not a uuid4 replacement but maybe good enough.;
+#X obj 313 154 uid;
+#X obj 27 158 uid;
+#X connect 0 0 9 0;
+#X connect 3 0 0 0;
+#X connect 4 0 8 0;
+#X connect 6 0 4 0;
+#X connect 8 0 5 0;
+#X connect 9 0 1 0;
