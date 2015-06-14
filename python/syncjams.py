@@ -272,7 +272,7 @@ class SyncjamsNode:
         
         # bail if incoming packets are not addressed to our top level namespace
         if not addr.startswith(self.namespace):
-            self.drop("Bad namespace", addr, tags, packet, source)
+            self._drop("Bad namespace", addr, tags, packet, source)
             return
         
         # bail if we don't know the version of syncjams
