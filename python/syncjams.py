@@ -75,11 +75,11 @@ class SyncjamsNode:
         self.listeners = [SyncjamsListener(ANY, self.port, callback=self._osc_message_handler)]
         # initial BPM state is required
         initial_state["/BPM"] = 180
-        # start by establishing my initial state
+        # start by establishing my initial state (at zero logical time)
         for s in initial_state:
-            self.set_state(s, initial_state[s])
+            self.set_state(s, initial_state[s], self.last_tick[1])
     
-    def set_state(self, address, state=[]):
+    def set_state(self, address, state=[], force_time=None):
         """
             Try to set a particular state variable on all nodes.
             Good for persistent information like song key, controller position, etc.
@@ -93,7 +93,7 @@ class SyncjamsNode:
         if type(state) in [list, tuple] and len([s for s in state if s is None]):
             raise SyncjamsException("State values must not be None.");
         # get the current time
-        now = time.time()
+        now = force_time or time.time()
         # put together the message we are going to send
         state_message = [self.last_tick[0], now - self.last_tick[1]] + (type(state) in [list, tuple] and state or [state])
         # check the state throttle queue to make sure we're not sending to one address too fast
@@ -367,7 +367,7 @@ class SyncjamsNode:
                 # what key the state change is stored on
                 key = "/" + "/".join(route[1:])
                 # tick, time_offset, value
-                if not self.states.has_key(key) or self.states[key][2] < tick or (self.states[key][2] == tick and self.states[key][3] < timediff):
+                if not self.states.has_key(key) or self.states[key][2] < tick or (self.states[key][2] == tick and self.states[key][3] < timediff) or (self.states[key][2] == tick and self.states[key][3] == timediff and self.states[key][0] < node_id):
                     self.states[key] = [node_id, message_id, tick, timediff, packet]
                     # run the state change callback
                     self.state(node_id, key, *packet)
