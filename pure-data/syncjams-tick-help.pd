@@ -1,0 +1,18 @@
+#N canvas 712 273 375 300 10;
+#X obj 23 56 syncjams \$0/sync;
+#X floatatom 60 158 12 0 0 3 sub-tick - -, f 12;
+#X text 131 56 <- our SyncJams instance;
+#X obj 23 87 syncjams-tick;
+#X text 17 15 Grab the sub-tick and tick from the SyncJams output.
+;
+#X floatatom 98 108 10 0 0 3 tick - -, f 10;
+#X obj 23 209 syncjams-state /BPM;
+#X obj 134 231 print BPM;
+#X text 202 229 <- listen out for state changes to "/BPM" state key.
+, f 24;
+#X text 112 85 <- listen out for ticks;
+#X connect 0 0 3 0;
+#X connect 3 0 6 0;
+#X connect 3 1 1 0;
+#X connect 3 2 5 0;
+#X connect 6 1 7 0;
