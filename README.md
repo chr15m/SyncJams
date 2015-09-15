@@ -4,11 +4,10 @@ It aims to be plug & play on LANs and WiFi networks and is embeddable in existin
 
 ## Shared Data ###
 
-Three types of data are shared between nodes:
+Two types of data are shared between nodes:
 
  * Timing data - all nodes are synchronised to the same metronome based on network consensus.
- * State data - button states, fader positions, drum sequence data, key tonal information - nodes always have the same latest state but rapid chages are throttled and intermediate states may be skipped.
- * Message data - ephemeral data that must arrive in the correct sequence such as hits from a live drummer, but is not stored.
+ * State data - button states, fader positions, drum sequence data, key tonal information - nodes always sync to the same latest state but rapid chages are throttled and intermediate states may be skipped over.
 
 ## Protocol ##
 
@@ -39,7 +38,7 @@ Methods you can run on the SyncJams object:
 	
 	get_node_list - returns a list of node_ids of known connected nodes.
 	
-	send *address* *values...* - send ephemeral values to a particular address at all nodes - ordered delivery guaranteed.
+	send *address* *values...* - send ephemeral values to a particular address at all nodes.
 
 Callbacks from the Syncjams object:
 
@@ -108,6 +107,8 @@ If a node wants to store specific information about their own settings they can 
  * /node/12345/loop-legth 16
  * /node/12345/patch-download-url "http://mysite.com/hello.sc"
  * /node/12345/application-url "http://supercollider.github.io/"
+
+By convention, nodes should not overwrite the information stored at another node's private state endpoints.
 
 ## Security Model ##
 
