@@ -5,8 +5,10 @@
 #X obj 64 95 outlet;
 #X obj 38 52 route sub-tick tick;
 #X obj 119 95 outlet;
+#X obj 197 97 outlet;
 #X connect 0 0 2 0;
 #X connect 2 0 1 0;
 #X connect 2 1 4 0;
 #X connect 4 0 3 0;
 #X connect 4 1 5 0;
+#X connect 4 2 6 0;
