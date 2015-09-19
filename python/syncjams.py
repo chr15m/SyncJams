@@ -56,8 +56,6 @@ class SyncjamsNode:
         self.running = False
         # collection of key->(node_id, message_id, tick, time_offset, value) state variables
         self.states = {}
-        # collection of last message_ids from other clients nodeID -> message_id
-        self.last_messages = {}
         # last time we saw a client nodeID -> our_timestamp
         self.last_seen = {}
         # last tick that happened (number, time)
@@ -123,7 +121,7 @@ class SyncjamsNode:
         return self.last_seen.keys()
     
     def send(self, address, value=[]):
-        """ Broadcast an arbitrary message to all nodes. Good for ephemeral rhythm/trigger information. Will always be received in order. """
+        """ Broadcast an arbitrary message to all nodes. Good for ephemeral rhythm/trigger information. """
         if not type(value) in [list, tuple, int, float, str]:
             raise SyncjamsException("Message value must be of list, tuple, int, float, or string type.")
         if type(value) in [list, tuple] and len([v for v in value if v is None]):
@@ -201,8 +199,6 @@ class SyncjamsNode:
             for node_id in forget:
                 # actually remove this node from all of our lists
                 del self.last_seen[node_id]
-                if self.last_messages.has_key(node_id):
-                    del self.last_messages[node_id]
                 # run the node_left callback method
                 self.node_left(node_id)
     
@@ -219,12 +215,9 @@ class SyncjamsNode:
     def _broadcast_tick(self):
         # broadcast what we think the current tick is to the network
         # and checksums for what we think current state is
-        # and also our last known message IDs from all peers
-        # around 50 peers this will exceed typical 512 byte UDP packet size
         self._send_one_to_all("/tick",
             [self.node_id, self.last_tick[0]] +
-            self.state_checksums +
-            sum([[m, self.last_messages[m]] for m in self.last_messages], [])
+            self.state_checksums
         )
     
     def _broadcast_state_ids(self):
@@ -308,18 +301,8 @@ class SyncjamsNode:
                 self.tick(*self.last_tick)
                 # send out our new tick anyway so everyone learns our last_message list
                 self._broadcast_tick()
-            # remainder of the tick message is their state checksums and then last node message ids
+            # remainder of the tick message is their state checksums
             state_checksums = packet[:3]
-            message_ids = packet[3:]
-            # build a dictionary of their known nodes and latest message ids
-            their_latest_messages = dict([(message_ids[x*2], message_ids[x*2+1]) for x in range(len(message_ids) / 2)])
-            # if this node does not know us yet and we have messages on our outgoing queue
-            if not their_latest_messages.has_key(self.node_id) and self.sent_queue:
-                # just send them the last item on our queue
-                self._send_one_to_all(self.sent_queue[-1][1], self.sent_queue[-1][2])
-            else:
-                # otherwise send through all messages from me that they are missing message_id, address, message
-                [self._send_one_to_all(m[1], m[2]) for m in self.sent_queue if m[0] > their_latest_messages.get(self.node_id, 0)]
             # compare their state checksums to our own
             if state_checksums != self.state_checksums:
                 logging.info("State checksums don't match, broadcasting state hash.");
@@ -339,9 +322,9 @@ class SyncjamsNode:
         elif route[0] == "state-ids":
             # build a list of their state unique id keys (node_id, message_id) 
             their_state_keys = [tuple(packet[x:x+2]) for x in xrange(0, len(packet), 2)]
-            # find states they don't have, and which are older than 3 ticks
+            # find states they don't have, and which are older than 1 tick
             for s in self.states:
-                if not tuple(self.states[s][:2]) in their_state_keys and self.states[s][2] + 3 < self.last_tick[0]:
+                if not tuple(self.states[s][:2]) in their_state_keys and self.states[s][2] + 1 < self.last_tick[0]:
                     # rebroadcast the state message
                     self._send_one_to_all("/state" + s, self.states[s])
                     logging.info("Rebroadcasting state: %s = %s" % (s, self.states[s]))
@@ -350,15 +333,6 @@ class SyncjamsNode:
         else:
             # every message should contain a message id
             message_id = self._parse_number_slot(packet)
-            # if we've never seen this node before (or haven't seen them for ages) treat the message as message-counter-reset
-            if not self.last_messages.has_key(node_id) or message_id < self.last_messages.get(node_id, sys.maxint) - STORE_MESSAGES:
-                self.last_messages[node_id] = message_id
-            # otherwise if this is the next in the sequence from this client then increment that counter
-            elif message_id == self.last_messages.get(node_id, 0) + 1:
-                self.last_messages[node_id] = message_id
-                # run the message callback if this isn't a state message
-                if route[0] != "state":
-                    self.message(node_id, "/" + "/".join(route), *packet)
             # with state messages, we only really care about timestamp - just want the latest
             if route[0] == "state":
                 # when was this state change according to consensus clock
