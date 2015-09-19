@@ -2,6 +2,8 @@ SyncJams is a zero-configuration network-synchronised metronome and state-data d
 
 It aims to be plug & play on LANs and WiFi networks and is embeddable in existing applications and music environments.
 
+	Current protocol version: v2
+
 ## Shared Data ###
 
 Two types of data are shared between nodes:
