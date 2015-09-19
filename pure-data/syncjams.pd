@@ -10,7 +10,7 @@
 #X obj 101 303 outlet address;
 #X obj 198 303 outlet data;
 #X obj 91 89 r \$0/argument/namespace;
-#X obj 38 198 route v1;
+#X obj 38 198 route v2;
 #X obj 10 243 list;
 #X obj 38 220 t b a;
 #X obj 38 176 list trim;
@@ -400,7 +400,7 @@ have a new state \, so output \, update state table \, and update checksums.
 #X obj 170 53 r \$0/argument/namespace;
 #X obj 47 77 list prepend syncjams;
 #X msg 47 104 set /\$1\$2;
-#X obj 10 127 list prepend v1;
+#X obj 10 127 list prepend v2;
 #X obj 131 201 list prepend;
 #X obj 166 173 list split 1;
 #X obj 131 244 spigot 0;

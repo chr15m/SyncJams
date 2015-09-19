@@ -31,7 +31,7 @@ NODE_TIMEOUT = 30
 # how long to leave between state updates (throttle fast state changes)
 STATE_THROTTLE_TIME = 0.007
 # syncjams protocol information
-PROTOCOL_VERSION = "v1"
+PROTOCOL_VERSION = "v2"
 
 class SyncjamsNode:
     """
