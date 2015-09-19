@@ -1,4 +1,4 @@
-SyncJams is a zero-configuration network-synchronised metronome, state dictionary, and data transport for easy collaboration and jamming with electronic music software.
+SyncJams is a zero-configuration network-synchronised metronome and state-data dictionary for easy collaboration and jamming with electronic music software.
 
 It aims to be plug & play on LANs and WiFi networks and is embeddable in existing applications and music environments.
 
@@ -7,11 +7,11 @@ It aims to be plug & play on LANs and WiFi networks and is embeddable in existin
 Two types of data are shared between nodes:
 
  * Timing data - all nodes are synchronised to the same metronome based on network consensus.
- * State data - button states, fader positions, drum sequence data, key tonal information - nodes always sync to the same latest state but rapid chages are throttled and intermediate states may be skipped over.
+ * State data - button states, fader positions, drum sequence data, key tonal information - nodes always sync to the same latest state but rapid chages are throttled and intermediate states may be skipped.
 
 ## Protocol ##
 
-SyncJams communicates in the OSC protocol on port 23232 over broadcast UDP packets. For more information and protocol details see [protocol.md](doc/protocol.md).
+SyncJams communicates using the OSC protocol on port 23232 over broadcast UDP packets. For more information and protocol details see [protocol.md](doc/protocol.md).
 
 ## Implementations and Platforms ##
 
@@ -20,15 +20,15 @@ Implementations currently exist for Pure Data and Python. See the respective fol
 ## Terminology ##
 
  * Node - a single instance of software or hardware running the protocol.
- * Address - an OSC style logical address where a piece of data may be received (message) or stored (state - address functions as a dictionary key).
+ * Address - an OSC style logical address ("key") where a piece of state/data may be shared and is synced.
 
-The protocol is promiscuous - all nodes receive all messages/states at every addresses sent to, but applications only need to listen for the addresses they care about.
+The protocol is promiscuous - all nodes receive all messages/states but applications only need to listen for the addresses they care about.
 
 ## API ##
 
 Methods you can run on the SyncJams object:
 
-	set_state *address* *state-values...* - tell all nodes to set the value at a particular address - up-to-date state guaranteed.
+	set_state *address* *state-values...* - tell all nodes to set the value at a particular address.
 	
 	get_state *address* - returns the current values stored at a particular state address.
 	
@@ -40,27 +40,27 @@ Methods you can run on the SyncJams object:
 	
 	send *address* *values...* - send ephemeral values to a particular address at all nodes.
 
-Callbacks from the Syncjams object:
+Callbacks/events from the Syncjams object:
 
 	tick *tick-number* *logical-time* - called when a metronome tick happens - logical time is only valid for this node.
 	
-	message *node-id* *address* *arguments...* - called when an ephemeral message comes in from the network to the address from node-id.
-	
 	state *node-id* *address* *arguments...* - called when node-id has set the state to the value in "arguments" at the address.
-	
-	state_keys - returns a list of all addresses currently holding states.
 	
 	node_joined *node-id* - called when node-id joins the network.
 	
 	node_left *node-id* - called when node-id leaves the network.
 	
+	message *node-id* *address* *arguments...* - called when an ephemeral message comes in from the network to the address from node-id.
+	
+	state_keys - returns a list of all addresses currently holding states.
+	
 	init_event - called once the syncjams library has a uid and is connected to the network ready to send
 
 ## Best Practices ##
 
-The only state address/key hardcoded into the protocol and used at the low level is the special "/BPM" state, which sets the number of beats per minute that the network consensus metronome should tick at. The SyncJams implementation listens our for changes to this state to change its own metronome.
+The only state address/key hardcoded into the protocol and used at the low level is the special "/BPM" state, which sets the number of beats per minute that the network consensus metronome should tick at. This defaults to 180 BPM. The SyncJams implementation listens out for changes to this state to change its own metronome.
 
-In general the state storage system is intended as a minimal way to achieve synchronisation between different electronic music performers. Having too much information (1000s of addresses with lots of data) in the state store will probably degrade performance as new nodes will need to be updated with the entire state dictionary.
+In general the state storage system is intended as a minimal way to achieve synchronisation between different electronic music performers. Having too much information (1000s of addresses with lots of data) in the state store will probably degrade performance as new nodes will need to be updated with the entire state dictionary when they join, resulting in a lot of traffic.
 
 Musical information such as tonality of the piece can be stored as a chordname / rootnote pair like this:
 
@@ -95,7 +95,7 @@ Back again ("ftom"):
 
 ### More Complex Musical Structures ###
 
-You could for example store your jam group's suggested chord/key pattern sequence as pairs of (tick-number, key-number), like this:
+You could store your jam group's suggested chord/key pattern sequence as pairs of (tick-number, key-number), like this:
 
  * /key/pattern/length 16
  * /key/pattern 0 0 4 1 13 2
@@ -130,6 +130,6 @@ Don't use the SyncJams protocol to store important or valuable information that 
 
 The SyncJams implementations in this repository are licensed under the terms of the LGPLv3.
 
-Basically this means you can use these implementations in your own code (proprietary or otherwise) but if you modify the core library code in this repository you must share the changes.
+Basically this means you can use these implementations in your own code (proprietary or otherwise) but if you modify and distribute the core library code in this repository you must share the changes.
 
-Copyright Chris McCormick, 2014. With huge thanks to Matt Black from Ninjatune for support, ideas, motivational pep-talks.
+Copyright Chris McCormick, 2014-2015. With huge thanks to Matt Black from Ninjatune for support, ideas, motivational pep-talks.
