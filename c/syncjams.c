@@ -3,7 +3,7 @@
  * 
  * This code was originally derived from tinyosc/main.c by Martin Roth.
  *
- * He gave me permission to re-license this code to 
+ * He gave me permission to re-license this code.
  *
  */
 
